@@ -426,6 +426,14 @@
             izberiDan(imeDneva, polniDatumTekst, timestamp);
         }
 
+        function izvediKlikUcenca(event, dan, indeks) {
+            let el = event.currentTarget;
+            if (el.style.transform && el.style.transform !== 'translateX(0px)') {
+                return;
+            }
+            prikaziProfilUcenca(dan, indeks);
+        }
+
         function aktivirajSledilnikeZdrsa() {
             let elementi = document.querySelectorAll('.dinamicni-izbris-element');
             elementi.forEach(element => {
@@ -453,11 +461,17 @@
                         setTimeout(() => {
                             let tip = element.getAttribute('data-tip');
                             let kljuc = element.getAttribute('data-kljuc');
+                            let dan = element.getAttribute('data-dan');
+                            let indeks = parseInt(element.getAttribute('data-indeks'));
                             
                             if (confirm('Zbrišem dokončno?')) {
                                 if (tip === 'dan') {
                                     prikazaniDnevi = prikazaniDnevi.filter(dan => dan !== kljuc);
                                     osveziSeznamDnevov();
+                                    shraniPodatke();
+                                } else if (tip === 'ucenec') {
+                                    bazaUcencev[dan].splice(indeks, 1);
+                                    osveziSeznamUcencev();
                                     shraniPodatke();
                                 }
                             } else {
@@ -701,8 +715,8 @@
                 bazaUcencev[dan].forEach((u, idx) => {
                     if (u.rescheduled && u.rescheduled.naKamDatum === ogledanDatumStr) {
                         if (!ucenecList.some(item => item.ucenec === u)) {
-            ucenecList.push({ ucenec: u, originalIndeks: idx, izvorniDan: dan });
-        }
+                            ucenecList.push({ ucenec: u, originalIndeks: idx, izvorniDan: dan });
+                        }
                     }
                 });
             }
@@ -725,17 +739,21 @@
                     }
 
                     izpis += `
-                    <div style="margin: 10px 0;">
-                        <button class="btn-meni" onclick="prikaziProfilUcenca('${item.izvorniDan}', ${item.originalIndeks})">
-                            <span class="termin-znacka">${prikazanTermin}</span>
-                            <strong>${ucenec.ime}</strong>
-                            ${opombaHtml}
+                    <div class="element-ovoj">
+                        <div class="element-ozadje-izbris">Brišem...</div>
+                        <button class="btn-meni dinamicni-izbris-element" style="margin: 0; width: 100%; padding: 12px 15px;" data-tip="ucenec" data-dan="${item.izvorniDan}" data-indeks="${item.originalIndeks}" onclick="izvediKlikUcenca(event, '${item.izvorniDan}', ${item.originalIndeks})">
+                            <div style="width: 100%;">
+                                <span class="termin-znacka">${prikazanTermin}</span>
+                                <strong>${ucenec.ime}</strong>
+                                ${opombaHtml}
+                            </div>
                         </button>
                     </div>`;
                 });
             }
             
             document.getElementById('seznam-ucencev-izpis').innerHTML = izpis;
+            aktivirajSledilnikeZdrsa();
         }
 
         function prikaziProfilUcenca(dan, indeks) {
