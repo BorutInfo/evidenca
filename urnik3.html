@@ -66,6 +66,39 @@
         /* Stil za izpis prestavitve pod gumbi */
         .izpis-prestavitve { display: none; padding: 10px; background: #fff3e0; border: 1px solid #ffe0b2; border-radius: 8px; text-align: center; color: #e67e22; font-weight: bold; margin: 15px 0; font-size: 15px; }
         
+        /* NOVI STILI ZA ZDRS (SWIPE) DNEVOV IN UČENCEV */
+        .element-ovoj {
+            position: relative;
+            overflow: hidden;
+            margin: 10px 0;
+            border-radius: 8px;
+            background-color: #e74c3c;
+        }
+        .element-ozadje-izbris {
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            padding-right: 20px;
+            color: white;
+            font-weight: bold;
+            box-sizing: border-box;
+            font-size: 16px;
+        }
+        .dinamicni-izbris-element {
+            position: relative;
+            transition: transform 0.2s ease-out;
+            z-index: 2;
+            margin: 0 !important;
+        }
+        .dinamicni-izbris-element.v-zdrsu {
+            transition: none;
+        }
+
         /* TISKANJE RAČUNA */
         @media print {
             body { background: white; padding: 0; }
@@ -86,10 +119,10 @@
         <div class="koledar-sekcija">
             <div class="koledar-glava">
                 <button class="koledar-nav-btn" onclick="navigirajKoledar(-1)">◀</button>
-                <span id="koledar-naslov" class="koledar-naslov-gumb" onclick="preklopiPogledKoledarja()"></span>
+                <span id="koledar-naslov" class="koledar-naslov-gumb koledar-naslov-prikaz" onclick="preklopiPogledKoledarja()"></span>
                 <button class="koledar-nav-btn" onclick="navigirajKoledar(1)">▶</button>
             </div>
-            <div id="koledar-mreza"></div>
+            <div id="koledar-mreza" class="koledar-mreza-prikaz"></div>
         </div>
 
         <div id="seznam-dnevov-izpis"></div>
@@ -103,15 +136,34 @@
             <h2 id="naslov-dneva">Učenci</h2>
             <div class="ura-desno prikaz-ure">00:00</div>
         </div>
+
+        <div class="koledar-sekcija">
+            <div class="koledar-glava">
+                <button class="koledar-nav-btn" onclick="navigirajKoledar(-1)">◀</button>
+                <span class="koledar-naslov-gumb koledar-naslov-prikaz" onclick="preklopiPogledKoledarja()"></span>
+                <button class="koledar-nav-btn" onclick="navigirajKoledar(1)">▶</button>
+            </div>
+            <div class="koledar-mreza-prikaz"></div>
+        </div>
+
         <div id="seznam-ucencev-izpis"></div>
         <button class="btn-akcija btn-potrdi" style="width: 100%; margin-top: 15px; display: block; font-size: 16px;" onclick="dodajUcenca()">+ Dodaj učenca</button>
     </div>
 
     <div id="zaslon-podatki" class="zaslon">
         <button class="btn-nazaj" onclick="nazajNaUcence()">← Nazaj na seznam</button>
-        <div class="glava-strani">
+        <<div class="glava-strani">
             <h3 id="podatki-ime">Ime Priimek</h3>
             <div class="ura-desno prikaz-ure">00:00</div>
+        </div>
+
+        <div class="koledar-sekcija">
+            <div class="koledar-glava">
+                <button class="koledar-nav-btn" onclick="navigirajKoledar(-1)">◀</button>
+                <span class="koledar-naslov-gumb koledar-naslov-prikaz" onclick="preklopiPogledKoledarja()"></span>
+                <button class="koledar-nav-btn" onclick="navigirajKoledar(1)">▶</button>
+            </div>
+            <div class="koledar-mreza-prikaz"></div>
         </div>
         
         <div class="podatek-vrstica">Termin uredbe: <strong id="podatki-termin" style="cursor:pointer; color:#3498db;" onclick="urediTerminIzProfila()">13:00</strong> <span style="font-size:12px; color:#7f8c8d;">(klikni za spremembo)</span></div>
@@ -244,7 +296,6 @@
         }
 
         let izbraniDan = '';
-        let trenutniUcenecIndeks = null;
         let trenutniUcenec = null;
 
         let koledarDatum = new Date(); 
@@ -352,80 +403,159 @@
                     let dodatniStil = jeIzbran ? 'background-color: #2c3e50; border: 2px solid #f1c40f;' : '';
 
                     izpis += `
-                    <div style="display: flex; align-items: center; gap: 8px; margin: 10px 0;">
-                        <button class="btn-meni" style="${dodatniStil} margin: 0; flex-grow: 1; padding: 12px 15px;" onclick="izberiDan('${imeDneva}', '${polniDatumTekst}', ${trenutniDan.getTime()})">
+                    <div class="element-ovoj">
+                        <div class="element-ozadje-izbris">Brišem...</div>
+                        <button class="btn-meni dinamicni-izbris-element" style="${dodatniStil} margin: 0; width: 100%; padding: 12px 15px;" data-tip="dan" data-kljuc="${imeDneva}" onclick="izvediKlikDneva(event, '${imeDneva}', '${polniDatumTekst}', ${trenutniDan.getTime()})">
                             <div style="width: 100%;">
-                                <span style="font-weight: bold;">${konf.kratica} - ${imeDneva}${dodatekImeUcencev}(${dan}. ${mesec}.)</span>
+                                <span style="font-weight: bold;">${konf.kratica} ${dan}. ${mesec}.</span>
                                 ${oznakePrestavitevHtml}
                             </div>
                         </button>
-                        <button class="btn-akcija btn-odpovej" style="flex-shrink: 0; width: 45px; height: 50px; padding: 0; margin: 0; display: flex; align-items: center; justify-content: center; font-size: 18px; border-radius: 8px;" onclick="odstraniDan('${imeDneva}')">✗</button>
                     </div>`;
                 }
             }
 
             document.getElementById('seznam-dnevov-izpis').innerHTML = izpis;
+            aktivirajSledilnikeZdrsa();
+        }
+        function izvediKlikDneva(event, imeDneva, polniDatumTekst, timestamp) {
+            let el = event.currentTarget;
+            if (el.style.transform && el.style.transform !== 'translateX(0px)') {
+                return;
+            }
+            izberiDan(imeDneva, polniDatumTekst, timestamp);
+        }
+
+        function aktivirajSledilnikeZdrsa() {
+            let elementi = document.querySelectorAll('.dinamicni-izbris-element');
+            elementi.forEach(element => {
+                let startX = 0;
+                let trenutniX = 0;
+                const mejaZaIzbris = -70;
+
+                function obZacetku(e) {
+                    startX = e.touches ? e.touches[0].clientX : e.clientX;
+                    element.classList.add('v-zdrsu');
+                }
+
+                function obPremiku(e) {
+                    let x = e.touches ? e.touches[0].clientX : e.clientX;
+                    trenutniX = x - startX;
+                    if (trenutniX > 0) trenutniX = 0;
+                    if (trenutniX < -120) trenutniX = -120;
+                    element.style.transform = `translateX(${trenutniX}px)`;
+                }
+
+                function obKoncu() {
+                    element.classList.remove('v-zdrsu');
+                    if (trenutniX < mejaZaIzbris) {
+                        element.style.transform = 'translateX(-100%)';
+                        setTimeout(() => {
+                            let tip = element.getAttribute('data-tip');
+                            let kljuc = element.getAttribute('data-kljuc');
+                            
+                            if (confirm('Zbrišem dokončno?')) {
+                                if (tip === 'dan') {
+                                    prikazaniDnevi = prikazaniDnevi.filter(dan => dan !== kljuc);
+                                    osveziSeznamDnevov();
+                                    shraniPodatke();
+                                }
+                            } else {
+                                element.style.transform = 'translateX(0px)';
+                                trenutniX = 0;
+                            }
+                        }, 150);
+                    } else {
+                        element.style.transform = 'translateX(0px)';
+                        trenutniX = 0;
+                    }
+                }
+
+                element.addEventListener('touchstart', obZacetku, { passive: true });
+                element.addEventListener('touchmove', obPremiku, { passive: true });
+                element.addEventListener('touchend', obKoncu);
+
+                element.addEventListener('mousedown', (e) => {
+                    obZacetku(e);
+                    function naPremikMiske(me) { obPremiku(me); }
+                    function naKonecMiske() {
+                        obKoncu();
+                        window.removeEventListener('mousemove', naPremikMiske);
+                        window.removeEventListener('mouseup', naKonecMiske);
+                    }
+                    window.addEventListener('mousemove', naPremikMiske);
+                    window.addEventListener('mouseup', naKonecMiske);
+                });
+            });
         }
 
         function osveziKoledar() {
-            let glava = document.getElementById('koledar-naslov');
-            let mreza = document.getElementById('koledar-mreza');
-            mreza.innerHTML = '';
+            let glave = document.querySelectorAll('.koledar-naslov-prikaz');
+            let mreze = document.querySelectorAll('.koledar-mreza-prikaz');
             let danes = new Date();
 
-            if (koledarPogled === 'teden') {
-                glava.innerText = slovenskiMeseci[koledarDatum.getMonth()] + ' ' + koledarDatum.getFullYear() + ' ▾';
-                mreza.className = 'koledar-mreza mreza-7';
-                slovenskiDneviKratki.forEach(d => mreza.innerHTML += `<div class="koledar-dan-ime">${d}</div>`);
-                
-                let trenutniDanTdna = koledarDatum.getDay();
-                let razlikaDoPonedeljka = koledarDatum.getDate() - trenutniDanTdna + (trenutniDanTdna === 0 ? -6 : 1);
-                let ponedeljek = new Date(koledarDatum.getFullYear(), koledarDatum.getMonth(), razlikaDoPonedeljka);
-
-                for (let i = 0; i < 7; i++) {
-                    let d = new Date(ponedeljek);
-                    d.setDate(ponedeljek.getDate() + i);
-                    let klasi = 'koledar-celica';
-                    if (jeIstiDatum(d, danes)) klasi += ' trenutni-dan';
-                    if (jeIstiDatum(d, koledarDatum)) klasi += ' izbran-dan';
-                    mreza.innerHTML += `<div class="${klasi}" onclick="klikniDanKoledarja(${d.getTime()})">${d.getDate()}</div>`;
-                }
-            } 
-            else if (koledarPogled === 'mesec') {
-                glava.innerText = slovenskiMeseci[koledarDatum.getMonth()] + ' ' + koledarDatum.getFullYear() + ' ▾';
-                mreza.className = 'koledar-mreza mreza-7';
-                slovenskiDneviKratki.forEach(d => mreza.innerHTML += `<div class="koledar-dan-ime">${d}</div>`);
-                
-                let leto = koledarDatum.getFullYear();
-                let mesec = koledarDatum.getMonth();
-                let prviDan = new Date(leto, mesec, 1);
-                let zadnjiDan = new Date(leto, mesec + 1, 0);
-                
-                let startIndeks = prviDan.getDay() - 1;
-                if (startIndeks < 0) startIndeks = 6;
-                
-                let prejsnjiMesecZadnji = new Date(leto, mesec, 0).getDate();
-                for (let i = startIndeks - 1; i >= 0; i--) {
-                    mreza.innerHTML += `<div class="koledar-celica izven-meseca">${prejsnjiMesecZadnji - i}</div>`;
-                }
-                
-                for (let i = 1; i <= zadnjiDan.getDate(); i++) {
-                    let d = new Date(leto, mesec, i);
-                    let klasi = 'koledar-celica';
-                    if (jeIstiDatum(d, danes)) klasi += ' trenutni-dan';
-                    if (jeIstiDatum(d, koledarDatum)) klasi += ' izbran-dan';
-                    mreza.innerHTML += `<div class="${klasi}" onclick="klikniDanKoledarja(${d.getTime()})">${i}</div>`;
-                }
-            } 
-            else if (koledarPogled === 'leto') {
-                glava.innerText = koledarDatum.getFullYear() + ' ▾';
-                mreza.className = 'koledar-mreza mreza-3';
-                slovenskiMeseci.forEach((m, indeks) => {
-                    let klasi = 'koledar-mesec-celica';
-                    if (indeks === danes.getMonth() && koledarDatum.getFullYear() === danes.getFullYear()) klasi += ' trenutni-mesec';
-                    mreza.innerHTML += `<div class="${klasi}" onclick="klikniMesecKoledarja(${indeks})">${m.substring(0, 3)}.</div>`;
-                });
+            let tekstGlave = '';
+            if (koledarPogled === 'leto') {
+                tekstGlave = koledarDatum.getFullYear() + ' ▾';
+            } else {
+                tekstGlave = slovenskiMeseci[koledarDatum.getMonth()] + ' ' + koledarDatum.getFullYear() + ' ▾';
             }
+
+            glave.forEach(glava => glava.innerText = tekstGlave);
+
+            mreze.forEach(mreza => {
+                mreza.innerHTML = '';
+                if (koledarPogled === 'teden') {
+                    mreza.className = 'koledar-mreza mreza-7 koledar-mreza-prikaz';
+                    slovenskiDneviKratki.forEach(d => mreza.innerHTML += `<div class="koledar-dan-ime">${d}</div>`);
+                    
+                    let trenutniDanTdna = koledarDatum.getDay();
+                    let razlikaDoPonedeljka = koledarDatum.getDate() - trenutniDanTdna + (trenutniDanTdna === 0 ? -6 : 1);
+                    let ponedeljek = new Date(koledarDatum.getFullYear(), koledarDatum.getMonth(), razlikaDoPonedeljka);
+
+                    for (let i = 0; i < 7; i++) {
+                        let d = new Date(ponedeljek);
+                        d.setDate(ponedeljek.getDate() + i);
+                        let klasi = 'koledar-celica';
+                        if (jeIstiDatum(d, danes)) klasi += ' trenutni-dan';
+                        if (jeIstiDatum(d, koledarDatum)) klasi += ' izbran-dan';
+                        mreza.innerHTML += `<div class="${klasi}" onclick="klikniDanKoledarja(${d.getTime()})">${d.getDate()}</div>`;
+                    }
+                } 
+                else if (koledarPogled === 'mesec') {
+                    mreza.className = 'koledar-mreza mreza-7 koledar-mreza-prikaz';
+                    slovenskiDneviKratki.forEach(d => mreza.innerHTML += `<div class="koledar-dan-ime">${d}</div>`);
+                    
+                    let leto = koledarDatum.getFullYear();
+                    let mesec = koledarDatum.getMonth();
+                    let prviDan = new Date(leto, mesec, 1);
+                    let zadnjiDan = new Date(leto, mesec + 1, 0);
+                    
+                    let startIndeks = prviDan.getDay() - 1;
+                    if (startIndeks < 0) startIndeks = 6;
+                    
+                    let prejsnjiMesecZadnji = new Date(leto, mesec, 0).getDate();
+                    for (let i = startIndeks - 1; i >= 0; i--) {
+                        mreza.innerHTML += `<div class="koledar-celica izven-meseca">${prejsnjiMesecZadnji - i}</div>`;
+                    }
+                    
+                    for (let i = 1; i <= zadnjiDan.getDate(); i++) {
+                        let d = new Date(leto, mesec, i);
+                        let klasi = 'koledar-celica';
+                        if (jeIstiDatum(d, danes)) klasi += ' trenutni-dan';
+                        if (jeIstiDatum(d, koledarDatum)) klasi += ' izbran-dan';
+                        mreza.innerHTML += `<div class="${klasi}" onclick="klikniDanKoledarja(${d.getTime()})">${i}</div>`;
+                    }
+                } 
+                else if (koledarPogled === 'leto') {
+                    mreza.className = 'koledar-mreza mreza-3 koledar-mreza-prikaz';
+                    slovenskiMeseci.forEach((m, indeks) => {
+                        let klasi = 'koledar-mesec-celica';
+                        if (indeks === danes.getMonth() && koledarDatum.getFullYear() === danes.getFullYear()) klasi += ' trenutni-mesec';
+                        mreza.innerHTML += `<div class="${klasi}" onclick="klikniMesecKoledarja(${indeks})">${m.substring(0, 3)}.</div>`;
+                    });
+                }
+            });
 
             osveziSeznamDnevov();
         }
@@ -563,7 +693,7 @@
             if (prikazaniDnevi.includes(izbraniDan)) {
                 let bUcenci = bazaUcencev[izbraniDan] || [];
                 bUcenci.forEach((u, idx) => {
-                    ucenecList.push({ ucenec: u, originalIndeks: idx, izvornyDan: izbraniDan });
+                    ucenecList.push({ ucenec: u, originalIndeks: idx, izvorniDan: izbraniDan });
                 });
             }
 
@@ -571,8 +701,8 @@
                 bazaUcencev[dan].forEach((u, idx) => {
                     if (u.rescheduled && u.rescheduled.naKamDatum === ogledanDatumStr) {
                         if (!ucenecList.some(item => item.ucenec === u)) {
-                            ucenecList.push({ ucenec: u, originalIndeks: idx, izvornyDan: dan });
-                        }
+            ucenecList.push({ ucenec: u, originalIndeks: idx, izvorniDan: dan });
+        }
                     }
                 });
             }
@@ -596,7 +726,7 @@
 
                     izpis += `
                     <div style="margin: 10px 0;">
-                        <button class="btn-meni" onclick="prikaziProfilUcenca('${item.izvornyDan}', ${item.originalIndeks})">
+                        <button class="btn-meni" onclick="prikaziProfilUcenca('${item.izvorniDan}', ${item.originalIndeks})">
                             <span class="termin-znacka">${prikazanTermin}</span>
                             <strong>${ucenec.ime}</strong>
                             ${opombaHtml}
@@ -609,7 +739,6 @@
         }
 
         function prikaziProfilUcenca(dan, indeks) {
-            trenutniUcenecIndeks = indeks;
             trenutniUcenec = bazaUcencev[dan][indeks];
             
             document.getElementById('podatki-ime').innerText = trenutniUcenec.ime;
@@ -726,12 +855,12 @@
         posodobiUro();
         setInterval(posodobiUro, 30000);
         osveziKoledar();
-        // REGISTRACIJA SERVICE WORKER-JA
+        // PRISILNI IZBRIS STAREGA UPRAVITELJA (URGENT CACHE CLEAR)
         if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('sw.js')
-                    .then(reg => console.log('PWA pripravljen!', reg))
-                    .catch(err => console.log('Napaka PWA:', err));
+            navigator.serviceWorker.getRegistrations().then(function(registrations) {
+                for(let registration of registrations) {
+                    registration.unregister();
+                }
             });
         }
     </script>
