@@ -10,19 +10,18 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <style>
         body { font-family: Arial, sans-serif; margin: 0; padding: 20px; background-color: #f5f6fa; color: #333; }
-        .zaslon { display: none; max-width: 400px; margin: 0 auto; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); position: relative; }
+        .zaslon { display: none; max-width: 400px; margin: 0 auto; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
         .aktiven { display: block; }
         
-        .glava-strani { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #eee; padding-bottom: 10px; margin-bottom: 15px; position: relative; }
+        .glava-strani { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #eee; padding-bottom: 10px; margin-bottom: 15px; }
         .glava-strani h2, .glava-strani h3 { margin: 0; color: #2c3e50; font-size: 20px; }
         
-        .datum-levo, .ura-desno { font-size: 20px; font-weight: bold; color: #2c3e50; font-family: Arial, sans-serif; }
+        .ura-desno { font-size: 18px; font-weight: bold; color: #7f8c8d; background: #ebdcb0; padding: 4px 8px; border-radius: 6px; font-family: monospace; }
         
         /* Gumbi na seznamu */
         .btn-meni { display: block; width: 100%; padding: 15px; margin: 10px 0; font-size: 16px; font-weight: bold; text-align: left; background-color: #3498db; color: white; border: none; border-radius: 8px; cursor: pointer; height: auto; }
         .btn-meni:active { background-color: #2980b9; }
-        .btn-nazaj { position: absolute; left: 0; top: 50%; transform: translateY(-50%); background-color: #e2e8f0; color: #2c3e50; border: none; border-radius: 0 40px 40px 0; width: 30px; height: 60px; cursor: pointer; z-index: 9999; display: flex; align-items: center; justify-content: center; padding: 0; padding-right: 4px; box-shadow: 2px 2px 6px rgba(0,0,0,0.1); transition: background-color 0.2s; }
-        .btn-nazaj:active { background-color: #cbd5e0; }
+        .btn-nazaj { background-color: #7f8c8d; color: white; padding: 8px 15px; border: none; border-radius: 5px; cursor: pointer; margin-bottom: 15px; }
         
         /* Stil za klikalni termin pred imenom */
         .termin-znacka { background-color: #2c3e50; color: #f1c40f; padding: 2px 6px; border-radius: 4px; margin-right: 10px; font-family: monospace; cursor: pointer; border: 1px solid #f1c40f; display: inline-block; vertical-align: middle; }
@@ -90,11 +89,11 @@
             box-sizing: border-box;
             font-size: 16px;
         }
-        function klikniMesecKoledarja(mIndeks) {
-            koledarDatum.setDate(1); // Nastavimo na 1. dan, da preprečimo preskok
-            koledarDatum.setMonth(mIndeks);
-            koledarPogled = 'mesec';
-            osveziKoledar();
+        .dinamicni-izbris-element {
+            position: relative;
+            transition: transform 0.2s ease-out;
+            z-index: 2;
+            margin: 0 !important;
         }
         .dinamicni-izbris-element.v-zdrsu {
             transition: none;
@@ -113,7 +112,7 @@
 
     <div id="zaslon-dnevi" class="zaslon aktiven">
         <div class="glava-strani">
-            <div class="datum-levo prikaz-datuma"></div>
+            <h2>Urnik - Dnevi</h2>
             <div class="ura-desno prikaz-ure">00:00</div>
         </div>
 
@@ -132,9 +131,9 @@
     </div>
 
     <div id="zaslon-ucenci" class="zaslon">
-        <button class="btn-nazaj" onclick="nazajNaDneve()"><svg width="12" height="20" viewBox="0 0 12 20" style="fill:none; stroke:currentColor; stroke-width:3; stroke-linecap:round; stroke-linejoin:round;"><path d="M10 2L2 10L10 18"/></svg></button>
+        <button class="btn-nazaj" onclick="nazajNaDneve()">← Nazaj na dneve</button>
         <div class="glava-strani">
-            <div class="datum-levo prikaz-datuma"></div>
+            <h2 id="naslov-dneva">Učenci</h2>
             <div class="ura-desno prikaz-ure">00:00</div>
         </div>
 
@@ -152,10 +151,9 @@
     </div>
 
     <div id="zaslon-podatki" class="zaslon">
-        <button class="btn-nazaj" onclick="nazajNaUcence()"><svg width="12" height="20" viewBox="0 0 12 20" style="fill:none; stroke:currentColor; stroke-width:3; stroke-linecap:round; stroke-linejoin:round;"><path d="M10 2L2 10L10 18"/></svg></button>
+        <button class="btn-nazaj" onclick="nazajNaUcence()">← Nazaj na seznam</button>
         <div class="glava-strani">
-            <div class="datum-levo prikaz-datuma"></div>
-            <h3 id="podatki-ime" style="position: absolute; left: 50%; transform: translateX(-50%); margin: 0; font-size: 20px; font-weight: bold; color: #2c3e50; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 45%; text-align: center;">Ime Priimek</h3>
+            <h3 id="podatki-ime">Ime Priimek</h3>
             <div class="ura-desno prikaz-ure">00:00</div>
         </div>
 
@@ -207,7 +205,7 @@
     </div>
 
     <div id="zaslon-racun" class="zaslon">
-        <button class="btn-nazaj skrij-pri-tiskanju" onclick="nazajNaPodatke()"><svg width="12" height="20" viewBox="0 0 12 20" style="fill:none; stroke:currentColor; stroke-width:3; stroke-linecap:round; stroke-linejoin:round;"><path d="M10 2L2 10L10 18"/></svg></button>
+        <button class="btn-nazaj skrij-pri-tiskanju" onclick="nazajNaPodatke()">← Nazaj na profil</button>
         
         <div class="glava-strani skrij-pri-tiskanju">
             <h3>Predogled računa</h3>
@@ -584,6 +582,9 @@
         }
 
         function klikniDanKoledarja(timestamp) {
+            let trenutniZaslon = document.querySelector('.zaslon.aktiven').id;
+            if (trenutniZaslon !== 'zaslon-dnevi') return;
+
             koledarDatum = new Date(timestamp);
             let danVTednu = koledarDatum.getDay();
             let nasIndeks = danVTednu === 0 ? 6 : danVTednu - 1;
@@ -605,17 +606,9 @@
         }
 
         function navigirajKoledar(smer) {
-            if (koledarPogled === 'teden') {
-                koledarDatum.setDate(koledarDatum.getDate() + (smer * 7));
-            } else if (koledarPogled === 'mesec') {
-                let trenutenDan = koledarDatum.getDate();
-                koledarDatum.setDate(1); 
-                koledarDatum.setMonth(koledarDatum.getMonth() + smer);
-                let zadnjiDanVmesecu = new Date(koledarDatum.getFullYear(), koledarDatum.getMonth() + 1, 0).getDate();
-                koledarDatum.setDate(Math.min(trenutenDan, zadnjiDanVmesecu));
-            } else if (koledarPogled === 'leto') {
-                koledarDatum.setFullYear(koledarDatum.getFullYear() + smer);
-            }
+            if (koledarPogled === 'teden') koledarDatum.setDate(koledarDatum.getDate() + (smer * 7));
+            else if (koledarPogled === 'mesec') koledarDatum.setMonth(koledarDatum.getMonth() + smer);
+            else if (koledarPogled === 'leto') koledarDatum.setFullYear(koledarDatum.getFullYear() + smer);
             osveziKoledar();
         }
 
@@ -657,7 +650,6 @@
         }
 
         function navigirajKoledarPrestavitev(smer) {
-            koledarPrestavitevDatum.setDate(1); // Tukaj nas zanima samo mesec, zato je 1. dan najvarnejši
             koledarPrestavitevDatum.setMonth(koledarPrestavitevDatum.getMonth() + smer);
             osveziKoledarPrestavitev();
         }
@@ -690,18 +682,9 @@
 
         function posodobiUro() {
             let danes = new Date();
-            const kraticeDnevov = ['NED', 'PON', 'TOR', 'SRE', 'ČET', 'PET', 'SOB'];
-            let kratica = kraticeDnevov[danes.getDay()];
-            let dan = danes.getDate();
-            let mesec = danes.getMonth() + 1;
             let ure = String(danes.getHours()).padStart(2, '0');
             let minute = String(danes.getMinutes()).padStart(2, '0');
-            
-            let formatiranDatum = kratica + '  ' + dan + '.' + mesec + '.';
-            let formatiranaUra = ure + ':' + minute;
-            
-            document.querySelectorAll('.prikaz-datuma').forEach(el => el.innerText = formatiranDatum);
-            document.querySelectorAll('.prikaz-ure').forEach(el => el.innerText = formatiranaUra);
+            document.querySelectorAll('.prikaz-ure').forEach(el => el.innerText = ure + ':' + minute);
         }
 
         function prikaziZaslon(id) {
@@ -714,6 +697,7 @@
             if (timestamp) {
                 koledarDatum = new Date(timestamp); 
             }
+            document.getElementById('naslov-dneva').innerText = dan + ' ' + (datumTekst ? datumTekst : '');
             osveziSeznamUcencev();
             prikaziZaslon('zaslon-ucenci');
         }
@@ -787,10 +771,7 @@
             
             let izpisEl = document.getElementById('prestavljeno-tekst-izpis');
             if (trenutniUcenec.prestavljenoOpomba) {
-                izpisEl.innerHTML = `
-                    <div>${trenutniUcenec.prestavljenoOpomba}</div>
-                    <button onclick="pocistiPrestavitev()" style="margin-top: 10px; padding: 6px 12px; background-color: white; border: 1px solid #e67e22; color: #e67e22; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 14px;">Počisti status</button>
-                `;
+                izpisEl.innerText = trenutniUcenec.prestavljenoOpomba;
                 izpisEl.style.display = 'block';
             } else {
                 izpisEl.style.display = 'none';
@@ -800,15 +781,6 @@
             document.getElementById('sekcija-koledar-prestavitev').style.display = 'none';
             
             prikaziZaslon('zaslon-podatki');
-        }
-
-        function pocistiPrestavitev() {
-            if (confirm("Ali res želite počistiti status prestavitve za tega učenca? Učenec se bo vrnil izključno na svoj redni urnik.")) {
-                trenutniUcenec.rescheduled = null;
-                trenutniUcenec.prestavljenoOpomba = '';
-                shraniPodatke();
-                document.getElementById('prestavljeno-tekst-izpis').style.display = 'none';
-            }
         }
 
         function dodajUcenca() {
