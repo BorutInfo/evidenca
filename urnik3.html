@@ -90,11 +90,11 @@
             box-sizing: border-box;
             font-size: 16px;
         }
-        .dinamicni-izbris-element {
-            position: relative;
-            transition: transform 0.2s ease-out;
-            z-index: 2;
-            margin: 0 !important;
+        function klikniMesecKoledarja(mIndeks) {
+            koledarDatum.setDate(1); // Nastavimo na 1. dan, da preprečimo preskok
+            koledarDatum.setMonth(mIndeks);
+            koledarPogled = 'mesec';
+            osveziKoledar();
         }
         .dinamicni-izbris-element.v-zdrsu {
             transition: none;
@@ -605,9 +605,17 @@
         }
 
         function navigirajKoledar(smer) {
-            if (koledarPogled === 'teden') koledarDatum.setDate(koledarDatum.getDate() + (smer * 7));
-            else if (koledarPogled === 'mesec') koledarDatum.setMonth(koledarDatum.getMonth() + smer);
-            else if (koledarPogled === 'leto') koledarDatum.setFullYear(koledarDatum.getFullYear() + smer);
+            if (koledarPogled === 'teden') {
+                koledarDatum.setDate(koledarDatum.getDate() + (smer * 7));
+            } else if (koledarPogled === 'mesec') {
+                let trenutenDan = koledarDatum.getDate();
+                koledarDatum.setDate(1); 
+                koledarDatum.setMonth(koledarDatum.getMonth() + smer);
+                let zadnjiDanVmesecu = new Date(koledarDatum.getFullYear(), koledarDatum.getMonth() + 1, 0).getDate();
+                koledarDatum.setDate(Math.min(trenutenDan, zadnjiDanVmesecu));
+            } else if (koledarPogled === 'leto') {
+                koledarDatum.setFullYear(koledarDatum.getFullYear() + smer);
+            }
             osveziKoledar();
         }
 
@@ -649,6 +657,7 @@
         }
 
         function navigirajKoledarPrestavitev(smer) {
+            koledarPrestavitevDatum.setDate(1); // Tukaj nas zanima samo mesec, zato je 1. dan najvarnejši
             koledarPrestavitevDatum.setMonth(koledarPrestavitevDatum.getMonth() + smer);
             osveziKoledarPrestavitev();
         }
@@ -778,7 +787,10 @@
             
             let izpisEl = document.getElementById('prestavljeno-tekst-izpis');
             if (trenutniUcenec.prestavljenoOpomba) {
-                izpisEl.innerText = trenutniUcenec.prestavljenoOpomba;
+                izpisEl.innerHTML = `
+                    <div>${trenutniUcenec.prestavljenoOpomba}</div>
+                    <button onclick="pocistiPrestavitev()" style="margin-top: 10px; padding: 6px 12px; background-color: white; border: 1px solid #e67e22; color: #e67e22; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 14px;">Počisti status</button>
+                `;
                 izpisEl.style.display = 'block';
             } else {
                 izpisEl.style.display = 'none';
@@ -788,6 +800,15 @@
             document.getElementById('sekcija-koledar-prestavitev').style.display = 'none';
             
             prikaziZaslon('zaslon-podatki');
+        }
+
+        function pocistiPrestavitev() {
+            if (confirm("Ali res želite počistiti status prestavitve za tega učenca? Učenec se bo vrnil izključno na svoj redni urnik.")) {
+                trenutniUcenec.rescheduled = null;
+                trenutniUcenec.prestavljenoOpomba = '';
+                shraniPodatke();
+                document.getElementById('prestavljeno-tekst-izpis').style.display = 'none';
+            }
         }
 
         function dodajUcenca() {
