@@ -10,7 +10,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <style>
         body { font-family: Arial, sans-serif; margin: 0; padding: 20px; background-color: #f5f6fa; color: #333; }
-        .zaslon { display: none; max-width: 400px; margin: 0 auto; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        .zaslon { display: none; max-width: 400px; margin: 0 auto; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); position: relative; }
         .aktiven { display: block; }
         
         .glava-strani { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #eee; padding-bottom: 10px; margin-bottom: 15px; }
@@ -21,7 +21,8 @@
         /* Gumbi na seznamu */
         .btn-meni { display: block; width: 100%; padding: 15px; margin: 10px 0; font-size: 16px; font-weight: bold; text-align: left; background-color: #3498db; color: white; border: none; border-radius: 8px; cursor: pointer; height: auto; }
         .btn-meni:active { background-color: #2980b9; }
-        .btn-nazaj { background-color: #7f8c8d; color: white; padding: 8px 15px; border: none; border-radius: 5px; cursor: pointer; margin-bottom: 15px; }
+        .btn-nazaj { position: absolute; left: 0; top: 50%; transform: translateY(-50%); background-color: #7f8c8d; color: white; border: none; border-radius: 0 40px 40px 0; width: 30px; height: 60px; cursor: pointer; z-index: 9999; display: flex; align-items: center; justify-content: center; padding: 0; padding-right: 4px; box-shadow: 2px 2px 6px rgba(0,0,0,0.15); transition: background-color 0.2s; }
+        .btn-nazaj:active { background-color: #5a6268; }
         
         /* Stil za klikalni termin pred imenom */
         .termin-znacka { background-color: #2c3e50; color: #f1c40f; padding: 2px 6px; border-radius: 4px; margin-right: 10px; font-family: monospace; cursor: pointer; border: 1px solid #f1c40f; display: inline-block; vertical-align: middle; }
@@ -111,8 +112,7 @@
 <body>
 
     <div id="zaslon-dnevi" class="zaslon aktiven">
-        <div class="glava-strani">
-            <h2>Urnik - Dnevi</h2>
+        <div class="glava-strani" style="justify-content: flex-end;">
             <div class="ura-desno prikaz-ure">00:00</div>
         </div>
 
@@ -132,8 +132,7 @@
 
     <div id="zaslon-ucenci" class="zaslon">
         <button class="btn-nazaj" onclick="nazajNaDneve()">← Nazaj na dneve</button>
-        <div class="glava-strani">
-            <h2 id="naslov-dneva">Učenci</h2>
+        <div class="glava-strani" style="justify-content: flex-end;">
             <div class="ura-desno prikaz-ure">00:00</div>
         </div>
 
@@ -151,9 +150,11 @@
     </div>
 
     <div id="zaslon-podatki" class="zaslon">
-        <button class="btn-nazaj" onclick="nazajNaUcence()">← Nazaj na seznam</button>
-        <<div class="glava-strani">
-            <h3 id="podatki-ime">Ime Priimek</h3>
+        <div class="glava-strani">
+            <div style="display: flex; align-items: center; gap: 15px;">
+                <button class="btn-nazaj" onclick="nazajNaUcence()" style="margin-bottom: 0; padding: 8px 12px;">← Nazaj na seznam</button>
+                <h3 id="podatki-ime" style="font-size: 28px; margin: 0;">Ime Priimek</h3>
+            </div>
             <div class="ura-desno prikaz-ure">00:00</div>
         </div>
 
@@ -694,7 +695,6 @@
             if (timestamp) {
                 koledarDatum = new Date(timestamp); 
             }
-            document.getElementById('naslov-dneva').innerText = dan + ' ' + (datumTekst ? datumTekst : '');
             osveziSeznamUcencev();
             prikaziZaslon('zaslon-ucenci');
         }
