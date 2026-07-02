@@ -9,41 +9,38 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <style>
-        body { font-family: Arial, sans-serif; margin: 0; padding: 20px; background-color: #f5f6fa; color: #333; }
-        .zaslon { display: none; max-width: 400px; margin: 0 auto; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
-        .aktiven { display: block; }
+        body { font-family: Arial, sans-serif; margin: 0; padding: 0; background-color: #f5f6fa; color: #333; display: flex; flex-direction: column; height: 100vh; height: 100dvh; overflow: hidden; }
+        .glavni-vsebnik { flex: 1; position: relative; overflow: hidden; width: 100%; max-width: 400px; margin: 0 auto; background: white; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        .zaslon { display: none; width: 100%; height: 100%; flex-direction: column; background: white; }
+        .aktiven { display: flex; }
+        
+        /* Novi stili za fiksno glavo in drsni sredinski del */
+        .fiksna-glava { padding: 20px 20px 0 20px; flex-shrink: 0; background: white; z-index: 10; }
+        .vsebina-scroll { flex: 1; overflow-y: auto; padding: 0 20px 20px 20px; }
         
         .glava-strani { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #eee; padding-bottom: 10px; margin-bottom: 15px; }
         .glava-strani h2, .glava-strani h3 { margin: 0; color: #2c3e50; font-size: 20px; }
         
         .ura-desno { font-size: 18px; font-weight: bold; color: #7f8c8d; background: #ebdcb0; padding: 4px 8px; border-radius: 6px; font-family: monospace; }
         
-        /* Gumbi na seznamu */
         .btn-meni { display: block; width: 100%; padding: 15px; margin: 10px 0; font-size: 16px; font-weight: bold; text-align: left; background-color: #3498db; color: white; border: none; border-radius: 8px; cursor: pointer; height: auto; }
         .btn-meni:active { background-color: #2980b9; }
-        .btn-nazaj { background-color: #7f8c8d; color: white; padding: 8px 15px; border: none; border-radius: 5px; cursor: pointer; margin-bottom: 15px; }
         
-        /* Stil za klikalni termin pred imenom */
         .termin-znacka { background-color: #2c3e50; color: #f1c40f; padding: 2px 6px; border-radius: 4px; margin-right: 10px; font-family: monospace; cursor: pointer; border: 1px solid #f1c40f; display: inline-block; vertical-align: middle; }
         .termin-znacka:hover { background-color: #f1c40f; color: #2c3e50; }
 
-        /* Podatki o učencu */
         .podatek-vrstica { font-size: 16px; margin: 12px 0; }
         .glavni-gumbi { display: flex; flex-direction: column; gap: 10px; margin: 20px 0; }
         .btn-akcija { flex: 1; padding: 15px; font-size: 14px; border: none; border-radius: 8px; cursor: pointer; color: white; font-weight: bold; }
         .btn-potrdi { background-color: #2ecc71; }
         .btn-odpovej { background-color: #e74c3c; }
-        
-        /* Pobarvan gumb za prestavitev */
         .btn-prestavljeno { background-color: #e67e22; }
         
-        /* Nastavitev minut in računov */
         .minute-sekcija { background: #f8f9fa; padding: 15px; border-radius: 8px; margin-top: 20px; text-align: center; }
         .okence-minut { display: inline-block; padding: 10px 20px; background: #e2e8f0; font-weight: bold; border-radius: 5px; cursor: pointer; min-width: 60px; }
         .Prilagodilnik-minut { display: none; margin-top: 15px; justify-content: center; gap: 15px; }
         .btn-spon { padding: 10px 20px; font-size: 16px; border: none; background: #2c3e50; color: white; border-radius: 5px; cursor: pointer; }
 
-        /* STILI ZA KOLEDAR */
         .koledar-sekcija { background: #fdfdfd; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px; margin-bottom: 20px; box-shadow: inset 0 1px 3px rgba(0,0,0,0.02); }
         .koledar-glava { display: flex; justify-content: space-between; align-items: center; font-weight: bold; margin-bottom: 10px; color: #2c3e50; }
         .koledar-naslov-gumb { cursor: pointer; font-size: 15px; background: #e2e8f0; padding: 5px 14px; border-radius: 20px; display: inline-block; font-weight: bold; }
@@ -63,158 +60,208 @@
         .koledar-mesec-celica:hover { background-color: #edf2f7; }
         .koledar-mesec-celica.trenutni-mesec { background-color: #ebdcb0; border: 1px solid #d6c494; }
 
-        /* Stil za izpis prestavitve pod gumbi */
         .izpis-prestavitve { display: none; padding: 10px; background: #fff3e0; border: 1px solid #ffe0b2; border-radius: 8px; text-align: center; color: #e67e22; font-weight: bold; margin: 15px 0; font-size: 15px; }
         
-        /* NOVI STILI ZA ZDRS (SWIPE) DNEVOV IN UČENCEV */
-        .element-ovoj {
-            position: relative;
-            overflow: hidden;
-            margin: 10px 0;
-            border-radius: 8px;
-            background-color: #e74c3c;
-        }
-        .element-ozadje-izbris {
-            position: absolute;
-            top: 0;
-            right: 0;
-            width: 100%;
-            height: 100%;
-            display: flex;
-            align-items: center;
-            justify-content: flex-end;
-            padding-right: 20px;
-            color: white;
-            font-weight: bold;
-            box-sizing: border-box;
-            font-size: 16px;
-        }
-        .dinamicni-izbris-element {
-            position: relative;
-            transition: transform 0.2s ease-out;
-            z-index: 2;
-            margin: 0 !important;
-        }
-        .dinamicni-izbris-element.v-zdrsu {
-            transition: none;
-        }
+        .element-ovoj { position: relative; overflow: hidden; margin: 10px 0; border-radius: 8px; background-color: #e74c3c; }
+        .element-ozadje-izbris { position: absolute; top: 0; right: 0; width: 100%; height: 100%; display: flex; align-items: center; justify-content: flex-end; padding-right: 20px; color: white; font-weight: bold; box-sizing: border-box; font-size: 16px; }
+        .dinamicni-izbris-element { position: relative; transition: transform 0.2s ease-out; z-index: 2; margin: 0 !important; }
+        .dinamicni-izbris-element.v-zdrsu { transition: none; }
 
-        /* TISKANJE RAČUNA */
+        /* NOVA NOGA IN IKONE */
+        .noga-ovoj { width: 100%; background-color: #2c3e50; display: flex; justify-content: center; z-index: 100; flex-shrink: 0; }
+        .noga-fiksna { width: 100%; max-width: 400px; display: flex; justify-content: space-around; align-items: center; padding: 8px 0; padding-bottom: max(8px, env(safe-area-inset-bottom)); }
+        .ikona-noga { display: flex; flex-direction: column; align-items: center; color: white; cursor: pointer; flex: 1; background: none; border: none; font-size: 22px; padding: 5px 0; opacity: 0.6; }
+        .ikona-noga.aktivna { opacity: 1; color: #f1c40f; }
+        .ikona-noga.neaktivna { opacity: 0.2; cursor: default; }
+        .ikona-tekst { font-size: 10px; margin-top: 4px; font-family: Arial, sans-serif; font-weight: bold; }
+
         @media print {
-            body { background: white; padding: 0; }
-            .zaslon { display: none !important; }
-            #zaslon-racun { display: block !important; box-shadow: none; padding: 0; margin: 0; max-width: 100%; }
+            body { background: white; padding: 0; display: block; height: auto; overflow: visible; }
+            .glavni-vsebnik { max-width: 100%; box-shadow: none; display: block; overflow: visible; }
+            .zaslon { display: none !important; height: auto; overflow: visible; }
+            #zaslon-racun { display: block !important; }
             .skrij-pri-tiskanju { display: none !important; }
+            .vsebina-scroll { overflow: visible; padding: 0; }
         }
     </style>
 </head>
 <body>
 
-    <div id="zaslon-dnevi" class="zaslon aktiven">
-        <div class="glava-strani">
-            <h2>Urnik - Dnevi</h2>
-            <div class="ura-desno prikaz-ure">00:00</div>
-        </div>
+    <div id="glavni-vsebnik">
 
-        <div class="koledar-sekcija">
-            <div class="koledar-glava">
-                <button class="koledar-nav-btn" onclick="navigirajKoledar(-1)">◀</button>
-                <span id="koledar-naslov" class="koledar-naslov-gumb koledar-naslov-prikaz" onclick="preklopiPogledKoledarja()"></span>
-                <button class="koledar-nav-btn" onclick="navigirajKoledar(1)">▶</button>
+        <div id="zaslon-dnevi" class="zaslon aktiven">
+            <div class="fiksna-glava">
+                <div class="glava-strani">
+                    <h2>Urnik - Dnevi</h2>
+                    <div class="ura-desno prikaz-ure">00:00</div>
+                </div>
+
+                <div class="koledar-sekcija">
+                    <div class="koledar-glava">
+                        <button class="koledar-nav-btn" onclick="navigirajKoledar(-1)">◀</button>
+                        <span id="koledar-naslov" class="koledar-naslov-gumb koledar-naslov-prikaz" onclick="preklopiPogledKoledarja()"></span>
+                        <button class="koledar-nav-btn" onclick="navigirajKoledar(1)">▶</button>
+                    </div>
+                    <div id="koledar-mreza" class="koledar-mreza-prikaz"></div>
+                </div>
             </div>
-            <div id="koledar-mreza" class="koledar-mreza-prikaz"></div>
-        </div>
 
-        <div id="seznam-dnevov-izpis"></div>
-
-        <button class="btn-akcija btn-potrdi" style="width: 100%; margin-top: 15px; display: block; font-size: 16px;" onclick="dodajDanPrekoGesla()">+ Dodaj dan</button>
-    </div>
-
-    <div id="zaslon-ucenci" class="zaslon">
-        <button class="btn-nazaj" onclick="nazajNaDneve()">← Nazaj na dneve</button>
-        <div class="glava-strani">
-            <h2 id="naslov-dneva">Učenci</h2>
-            <div class="ura-desno prikaz-ure">00:00</div>
-        </div>
-
-        <div class="koledar-sekcija">
-            <div class="koledar-glava">
-                <button class="koledar-nav-btn" onclick="navigirajKoledar(-1)">◀</button>
-                <span class="koledar-naslov-gumb koledar-naslov-prikaz" onclick="preklopiPogledKoledarja()"></span>
-                <button class="koledar-nav-btn" onclick="navigirajKoledar(1)">▶</button>
+            <div class="vsebina-scroll">
+                <div id="seznam-dnevov-izpis"></div>
+                <button class="btn-akcija btn-potrdi" style="width: 100%; margin-top: 15px; display: block; font-size: 16px;" onclick="dodajDanPrekoGesla()">+ Dodaj dan</button>
             </div>
-            <div class="koledar-mreza-prikaz"></div>
         </div>
 
-        <div id="seznam-ucencev-izpis"></div>
-        <button class="btn-akcija btn-potrdi" style="width: 100%; margin-top: 15px; display: block; font-size: 16px;" onclick="dodajUcenca()">+ Dodaj učenca</button>
-    </div>
+        <div id="zaslon-ucenci" class="zaslon">
+            <div class="fiksna-glava">
+                <div class="glava-strani">
+                    <h2 id="naslov-dneva">Učenci</h2>
+                    <div class="ura-desno prikaz-ure">00:00</div>
+                </div>
 
-    <div id="zaslon-podatki" class="zaslon">
-        <button class="btn-nazaj" onclick="nazajNaUcence()">← Nazaj na seznam</button>
-        <div class="glava-strani">
-            <h3 id="podatki-ime">Ime Priimek</h3>
-            <div class="ura-desno prikaz-ure">00:00</div>
-        </div>
-
-        <div class="koledar-sekcija">
-            <div class="koledar-glava">
-                <button class="koledar-nav-btn" onclick="navigirajKoledar(-1)">◀</button>
-                <span class="koledar-naslov-gumb koledar-naslov-prikaz" onclick="preklopiPogledKoledarja()"></span>
-                <button class="koledar-nav-btn" onclick="navigirajKoledar(1)">▶</button>
+                <div class="koledar-sekcija">
+                    <div class="koledar-glava">
+                        <button class="koledar-nav-btn" onclick="navigirajKoledar(-1)">◀</button>
+                        <span class="koledar-naslov-gumb koledar-naslov-prikaz" onclick="preklopiPogledKoledarja()"></span>
+                        <button class="koledar-nav-btn" onclick="navigirajKoledar(1)">▶</button>
+                    </div>
+                    <div class="koledar-mreza-prikaz"></div>
+                </div>
             </div>
-            <div class="koledar-mreza-prikaz"></div>
-        </div>
-        
-        <div class="podatek-vrstica">Termin uredbe: <strong id="podatki-termin" style="cursor:pointer; color:#3498db;" onclick="urediTerminIzProfila()">13:00</strong> <span style="font-size:12px; color:#7f8c8d;">(klikni za spremembo)</span></div>
-        <div class="podatek-vrstica">Predvidenih ur v mesecu: <strong id="podatki-predvideno">4</strong></div>
-        <div class="podatek-vrstica">Izvedenih ur: <strong id="podatki-izvedeno">0</strong></div>
-        
-        <div class="glavni-gumbi">
-            <button class="btn-akcija btn-potrdi" onclick="zabeleziUro(true)">✓ Izvedeno</button>
-            <button class="btn-akcija btn-odpovej" onclick="zabeleziUro(false)">✗ Neizvedeno</button>
-            <button class="btn-akcija btn-prestavljeno" onclick="preklopiKoledarPrestavitev()">Prestavljeno</button>
-        </div>
 
-        <div id="prestavljeno-tekst-izpis" class="izpis-prestavitve"></div>
-
-        <div id="sekcija-koledar-prestavitev" class="koledar-sekcija" style="display: none; margin-top: 15px;">
-            <div class="koledar-glava">
-                <button class="koledar-nav-btn" onclick="navigirajKoledarPrestavitev(-1)">◀</button>
-                <span id="koledar-prestavitev-naslov" style="font-weight: bold; color: #2c3e50;"></span>
-                <button class="koledar-nav-btn" onclick="navigirajKoledarPrestavitev(1)">▶</button>
+            <div class="vsebina-scroll">
+                <div id="seznam-ucencev-izpis"></div>
+                <button class="btn-akcija btn-potrdi" style="width: 100%; margin-top: 15px; display: block; font-size: 16px;" onclick="dodajUcenca()">+ Dodaj učenca</button>
             </div>
-            <div id="koledar-prestavitev-mreza" class="koledar-mreza mreza-7"></div>
         </div>
 
-        <div class="minute-sekcija">
-            <div class="podatek-vrstica">Dolžina ure:</div>
-            <div class="okence-minut" id="okence-izpis" onclick="prikaziGumbaZaMinute()">30 min</div>
+        <div id="zaslon-podatki" class="zaslon">
+            <div class="fiksna-glava">
+                <div class="glava-strani">
+                    <h3 id="podatki-ime">Ime Priimek</h3>
+                    <div class="ura-desno prikaz-ure">00:00</div>
+                </div>
+
+                <div class="koledar-sekcija">
+                    <div class="koledar-glava">
+                        <button class="koledar-nav-btn" onclick="navigirajKoledar(-1)">◀</button>
+                        <span class="koledar-naslov-gumb koledar-naslov-prikaz" onclick="preklopiPogledKoledarja()"></span>
+                        <button class="koledar-nav-btn" onclick="navigirajKoledar(1)">▶</button>
+                    </div>
+                    <div class="koledar-mreza-prikaz"></div>
+                </div>
+            </div>
             
-            <div class="Prilagodilnik-minut" id="minute-gumbi">
-                <button class="btn-spon" onclick="prilagodiMinute(-5)">- 5 min</button>
-                <button class="btn-spon" onclick="prilagodiMinute(5)">+ 5 min</button>
+            <div class="vsebina-scroll">
+                <div class="podatek-vrstica">Termin uredbe: <strong id="podatki-termin" style="cursor:pointer; color:#3498db;" onclick="urediTerminIzProfila()">13:00</strong> <span style="font-size:12px; color:#7f8c8d;">(klikni za spremembo)</span></div>
+                <div class="podatek-vrstica">Predvidenih ur v mesecu: <strong id="podatki-predvideno">4</strong></div>
+                <div class="podatek-vrstica">Izvedenih ur: <strong id="podatki-izvedeno">0</strong></div>
+                
+                <div class="glavni-gumbi">
+                    <button class="btn-akcija btn-potrdi" onclick="zabeleziUro(true)">✓ Izvedeno</button>
+                    <button class="btn-akcija btn-odpovej" onclick="zabeleziUro(false)">✗ Neizvedeno</button>
+                    <button class="btn-akcija btn-prestavljeno" onclick="preklopiKoledarPrestavitev()">Prestavljeno</button>
+                </div>
+
+                <div id="prestavljeno-tekst-izpis" class="izpis-prestavitve"></div>
+
+                <div id="sekcija-koledar-prestavitev" class="koledar-sekcija" style="display: none; margin-top: 15px;">
+                    <div class="koledar-glava">
+                        <button class="koledar-nav-btn" onclick="navigirajKoledarPrestavitev(-1)">◀</button>
+                        <span id="koledar-prestavitev-naslov" style="font-weight: bold; color: #2c3e50;"></span>
+                        <button class="koledar-nav-btn" onclick="navigirajKoledarPrestavitev(1)">▶</button>
+                    </div>
+                    <div id="koledar-prestavitev-mreza" class="koledar-mreza mreza-7"></div>
+                </div>
+
+                <div class="minute-sekcija">
+                    <div class="podatek-vrstica">Dolžina ure:</div>
+                    <div class="okence-minut" id="okence-izpis" onclick="prikaziGumbaZaMinute()">30 min</div>
+                    
+                    <div class="Prilagodilnik-minut" id="minute-gumbi">
+                        <button class="btn-spon" onclick="prilagodiMinute(-5)">- 5 min</button>
+                        <button class="btn-spon" onclick="prilagodiMinute(5)">+ 5 min</button>
+                    </div>
+                </div>
+
+                <div class="minute-sekcija" style="background: #f0f4f8; border: 1px solid #dce4ec;">
+                    <div class="podatek-vrstica">Cena posamezne ure (€):</div>
+                    <input type="number" id="vnos-cene-ure" value="20" style="width: 80px; padding: 6px; text-align: center; font-size: 16px; border-radius: 6px; border: 1px solid #cbd5e0; margin-bottom: 10px;">
+                    <button class="btn-akcija" style="background-color: #9b59b6; width: 100%; display: block;" onclick="generirajPodatkeRacuna()">Pripravi račun</button>
+                </div>
             </div>
         </div>
 
-        <div class="minute-sekcija" style="background: #f0f4f8; border: 1px solid #dce4ec;">
-            <div class="podatek-vrstica">Cena posamezne ure (€):</div>
-            <input type="number" id="vnos-cene-ure" value="20" style="width: 80px; padding: 6px; text-align: center; font-size: 16px; border-radius: 6px; border: 1px solid #cbd5e0; margin-bottom: 10px;">
-            <button class="btn-akcija" style="background-color: #9b59b6; width: 100%; display: block;" onclick="generirajPodatkeRacuna()">Pripravi račun</button>
+        <div id="zaslon-racun" class="zaslon">
+            <div class="fiksna-glava skrij-pri-tiskanju">
+                <div class="glava-strani">
+                    <h3>Predogled računa</h3>
+                </div>
+            </div>
+            <div class="vsebina-scroll">
+                <div id="vsebina-pdf-racuna" style="background: white; padding: 20px; border: 1px solid #ddd; border-radius: 8px; font-family: 'Courier New', Courier, monospace; font-size: 13px; color: #000; line-height: 1.4;">
+                </div>
+                <button class="btn-akcija btn-potrdi skrij-pri-tiskanju" style="width: 100%; margin-top: 15px; font-size: 16px;" onclick="window.print()">Shrani kot PDF / Natisni</button>
+            </div>
         </div>
+
+        <div id="zaslon-kontakti" class="zaslon">
+            <div class="fiksna-glava">
+                <div class="glava-strani">
+                    <h2>Kontakti</h2>
+                    <div class="ura-desno prikaz-ure">00:00</div>
+                </div>
+            </div>
+            <div class="vsebina-scroll">
+                <p style="text-align:center; color:#7f8c8d; margin-top: 20px;">Stran je zaenkrat prazna.</p>
+            </div>
+        </div>
+
+        <div id="zaslon-izdaj-racune" class="zaslon">
+            <div class="fiksna-glava">
+                <div class="glava-strani">
+                    <h2>Izdaj račune</h2>
+                    <div class="ura-desno prikaz-ure">00:00</div>
+                </div>
+            </div>
+            <div class="vsebina-scroll">
+                <p style="text-align:center; color:#7f8c8d; margin-top: 20px;">Stran je zaenkrat prazna.</p>
+            </div>
+        </div>
+
+        <div id="zaslon-nastavitve" class="zaslon">
+            <div class="fiksna-glava">
+                <div class="glava-strani">
+                    <h2>Nastavitve</h2>
+                    <div class="ura-desno prikaz-ure">00:00</div>
+                </div>
+            </div>
+            <div class="vsebina-scroll">
+                <p style="text-align:center; color:#7f8c8d; margin-top: 20px;">Stran je zaenkrat prazna.</p>
+            </div>
+        </div>
+
     </div>
 
-    <div id="zaslon-racun" class="zaslon">
-        <button class="btn-nazaj skrij-pri-tiskanju" onclick="nazajNaPodatke()">← Nazaj na profil</button>
-        
-        <div class="glava-strani skrij-pri-tiskanju">
-            <h3>Predogled računa</h3>
+    <div class="noga-ovoj skrij-pri-tiskanju">
+        <div class="noga-fiksna">
+            <button id="ikona-nazaj" class="ikona-noga neaktivna" onclick="pojdiNazaj()">
+                <span>❮</span>
+                <span class="ikona-tekst">Nazaj</span>
+            </button>
+            <button id="ikona-kontakti" class="ikona-noga" onclick="odpriZaslonMeni('zaslon-kontakti', 'ikona-kontakti')">
+                <span>👥</span>
+                <span class="ikona-tekst">Kontakti</span>
+            </button>
+            <button id="ikona-racuni" class="ikona-noga" onclick="odpriZaslonMeni('zaslon-izdaj-racune', 'ikona-racuni')">
+                <span>📄</span>
+                <span class="ikona-tekst">Računi</span>
+            </button>
+            <button id="ikona-nastavitve" class="ikona-noga" onclick="odpriZaslonMeni('zaslon-nastavitve', 'ikona-nastavitve')">
+                <span>⚙️</span>
+                <span class="ikona-tekst">Nastavitve</span>
+            </button>
         </div>
-
-        <div id="vsebina-pdf-racuna" style="background: white; padding: 20px; border: 1px solid #ddd; border-radius: 8px; font-family: 'Courier New', Courier, monospace; font-size: 13px; color: #000; line-height: 1.4;">
-        </div>
-
-        <button class="btn-akcija btn-potrdi skrij-pri-tiskanju" style="width: 100%; margin-top: 15px; font-size: 16px;" onclick="window.print()">Shrani kot PDF / Natisni</button>
     </div>
 
     <script>
@@ -687,9 +734,54 @@
             document.querySelectorAll('.prikaz-ure').forEach(el => el.innerText = ure + ':' + minute);
         }
 
+        let zgodovinaZaslonov = ['zaslon-dnevi'];
+
         function prikaziZaslon(id) {
+            if (zgodovinaZaslonov[zgodovinaZaslonov.length - 1] !== id) {
+                zgodovinaZaslonov.push(id);
+            }
+            
             document.querySelectorAll('.zaslon').forEach(z => z.classList.remove('aktiven'));
             document.getElementById(id).classList.add('aktiven');
+            
+            posodobiGumbNazaj(id);
+        }
+
+        function posodobiGumbNazaj(aktivenZaslon) {
+            let btnNazaj = document.getElementById('ikona-nazaj');
+            if(btnNazaj) {
+                if (aktivenZaslon === 'zaslon-dnevi') {
+                    btnNazaj.classList.add('neaktivna');
+                    document.querySelectorAll('.ikona-noga').forEach(i => {
+                        if(i.id !== 'ikona-nazaj') i.classList.remove('aktivna');
+                    });
+                    zgodovinaZaslonov = ['zaslon-dnevi']; 
+                } else {
+                    btnNazaj.classList.remove('neaktivna');
+                }
+            }
+        }
+
+        function pojdiNazaj() {
+            if (zgodovinaZaslonov.length > 1) {
+                zgodovinaZaslonov.pop(); 
+                let prejsnji = zgodovinaZaslonov[zgodovinaZaslonov.length - 1];
+                
+                if (prejsnji === 'zaslon-dnevi') osveziKoledar();
+                if (prejsnji === 'zaslon-ucenci') osveziSeznamUcencev();
+                
+                document.querySelectorAll('.zaslon').forEach(z => z.classList.remove('aktiven'));
+                document.getElementById(prejsnji).classList.add('aktiven');
+                posodobiGumbNazaj(prejsnji);
+            }
+        }
+        
+        function odpriZaslonMeni(id, idIkone) {
+            prikaziZaslon(id);
+            document.querySelectorAll('.ikona-noga').forEach(i => {
+                if(i.id !== 'ikona-nazaj') i.classList.remove('aktivna');
+            });
+            if (idIkone) document.getElementById(idIkone).classList.add('aktivna');
         }
 
         function izberiDan(dan, datumTekst, timestamp) {
@@ -866,10 +958,6 @@
             prikaziZaslon('zaslon-racun');
             shraniPodatke();
         }
-
-        function nazajNaDneve() { osveziKoledar(); prikaziZaslon('zaslon-dnevi'); }
-        function nazajNaUcence() { osveziSeznamUcencev(); prikaziZaslon('zaslon-ucenci'); }
-        function nazajNaPodatke() { prikaziZaslon('zaslon-podatki'); }
 
         // ZAGON STRANI IN NALAGANJE PODATKOV
         naloziPodatke();
