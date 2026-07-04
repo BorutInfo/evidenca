@@ -1,3 +1,4 @@
+HTML
 <!DOCTYPE html>
 <html lang="sl">
 <head>
@@ -17,7 +18,9 @@
         
         /* Novi stili za fiksno glavo in drsni sredinski del */
         .fiksna-glava { padding: 20px 20px 0 20px; flex-shrink: 0; background: white; z-index: 10; }
-        .vsebina-scroll { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 0 20px 20px 20px; min-height: 0; }
+        .vsebina-scroll { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 10px 20px 20px 20px; min-height: 0; }
+        
+        .koledar-ovoj-spodaj { padding: 10px 20px 20px 20px; flex-shrink: 0; background: white; z-index: 10; border-top: 1px solid #f0f0f0; box-shadow: 0 -4px 10px rgba(0,0,0,0.02); }
         
         .glava-strani { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #eee; padding-bottom: 10px; margin-bottom: 15px; }
         .glava-strani h2, .glava-strani h3 { margin: 0; color: #2c3e50; font-size: 20px; }
@@ -42,8 +45,8 @@
         .Prilagodilnik-minut { display: none; margin-top: 15px; justify-content: center; gap: 15px; }
         .btn-spon { padding: 10px 20px; font-size: 16px; border: none; background: #2c3e50; color: white; border-radius: 5px; cursor: pointer; }
 
-        .koledar-sekcija { background: #fdfdfd; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px; margin-bottom: 20px; box-shadow: inset 0 1px 3px rgba(0,0,0,0.02); }
-        .koledar-glava { display: flex; justify-content: space-between; align-items: center; font-weight: bold; margin-bottom: 10px; color: #2c3e50; }
+        .koledar-sekcija { background: #fdfdfd; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px; box-shadow: inset 0 1px 3px rgba(0,0,0,0.02); }
+        .koledar-glava { display: flex; justify-content: space-between; align-items: center; font-weight: bold; margin-top: 12px; color: #2c3e50; }
         .koledar-naslov-gumb { cursor: pointer; font-size: 15px; background: #e2e8f0; padding: 5px 14px; border-radius: 20px; display: inline-block; font-weight: bold; }
         .koledar-naslov-gumb:hover { background: #cbd5e0; }
         .koledar-nav-btn { background: none; border: none; font-size: 14px; cursor: pointer; color: #3498db; padding: 5px 10px; font-weight: bold; }
@@ -96,20 +99,24 @@
                     <h2>Urnik - Dnevi</h2>
                     <div class="ura-desno prikaz-ure">00:00</div>
                 </div>
-
-                <div class="koledar-sekcija">
-                    <div class="koledar-glava">
-                        <button class="koledar-nav-btn" onclick="navigirajKoledar(-1)">◀</button>
-                        <span id="koledar-naslov" class="koledar-naslov-gumb koledar-naslov-prikaz" onclick="preklopiPogledKoledarja()"></span>
-                        <button class="koledar-nav-btn" onclick="navigirajKoledar(1)">▶</button>
-                    </div>
-                    <div id="koledar-mreza" class="koledar-mreza-prikaz"></div>
-                </div>
             </div>
 
             <div class="vsebina-scroll">
                 <div id="seznam-dnevov-izpis"></div>
                 <button class="btn-akcija btn-potrdi" style="width: 100%; margin-top: 15px; display: block; font-size: 16px;" onclick="dodajDanPrekoGesla()">+ Dodaj dan</button>
+            </div>
+
+            <div class="koledar-ovoj-spodaj">
+                <div class="koledar-sekcija" style="margin-bottom: 0;">
+                    <div id="koledar-mreza" class="koledar-mreza-prikaz"></div>
+                    <div class="koledar-glava">
+                        <button class="koledar-nav-btn" onclick="navigirajKoledar(-1)">◀</button>
+                        <button class="koledar-nav-btn" onclick="skociNaAktualniTeden()">T</button>
+                        <span id="koledar-naslov" class="koledar-naslov-gumb koledar-naslov-prikaz" onclick="preklopiPogledKoledarja()"></span>
+                        <button class="koledar-nav-btn" onclick="skociNaAktualniDan()">D</button>
+                        <button class="koledar-nav-btn" onclick="navigirajKoledar(1)">▶</button>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -119,20 +126,24 @@
                     <h2 id="naslov-dneva">Učenci</h2>
                     <div class="ura-desno prikaz-ure">00:00</div>
                 </div>
-
-                <div class="koledar-sekcija">
-                    <div class="koledar-glava">
-                        <button class="koledar-nav-btn" onclick="navigirajKoledar(-1)">◀</button>
-                        <span class="koledar-naslov-gumb koledar-naslov-prikaz" onclick="preklopiPogledKoledarja()"></span>
-                        <button class="koledar-nav-btn" onclick="navigirajKoledar(1)">▶</button>
-                    </div>
-                    <div class="koledar-mreza-prikaz"></div>
-                </div>
             </div>
 
             <div class="vsebina-scroll">
                 <div id="seznam-ucencev-izpis"></div>
                 <button class="btn-akcija btn-potrdi" style="width: 100%; margin-top: 15px; display: block; font-size: 16px;" onclick="dodajUcenca()">+ Dodaj učenca</button>
+            </div>
+
+            <div class="koledar-ovoj-spodaj">
+                <div class="koledar-sekcija" style="margin-bottom: 0;">
+                    <div class="koledar-mreza-prikaz"></div>
+                    <div class="koledar-glava">
+                        <button class="koledar-nav-btn" onclick="navigirajKoledar(-1)">◀</button>
+                        <button class="koledar-nav-btn" onclick="skociNaAktualniTeden()">T</button>
+                        <span class="koledar-naslov-gumb koledar-naslov-prikaz" onclick="preklopiPogledKoledarja()"></span>
+                        <button class="koledar-nav-btn" onclick="skociNaAktualniDan()">D</button>
+                        <button class="koledar-nav-btn" onclick="navigirajKoledar(1)">▶</button>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -141,15 +152,6 @@
                 <div class="glava-strani">
                     <h3 id="podatki-ime">Ime Priimek</h3>
                     <div class="ura-desno prikaz-ure">00:00</div>
-                </div>
-
-                <div class="koledar-sekcija">
-                    <div class="koledar-glava">
-                        <button class="koledar-nav-btn" onclick="navigirajKoledar(-1)">◀</button>
-                        <span class="koledar-naslov-gumb koledar-naslov-prikaz" onclick="preklopiPogledKoledarja()"></span>
-                        <button class="koledar-nav-btn" onclick="navigirajKoledar(1)">▶</button>
-                    </div>
-                    <div class="koledar-mreza-prikaz"></div>
                 </div>
             </div>
             
@@ -167,12 +169,12 @@
                 <div id="prestavljeno-tekst-izpis" class="izpis-prestavitve"></div>
 
                 <div id="sekcija-koledar-prestavitev" class="koledar-sekcija" style="display: none; margin-top: 15px;">
+                    <div id="koledar-prestavitev-mreza" class="koledar-mreza mreza-7"></div>
                     <div class="koledar-glava">
                         <button class="koledar-nav-btn" onclick="navigirajKoledarPrestavitev(-1)">◀</button>
                         <span id="koledar-prestavitev-naslov" style="font-weight: bold; color: #2c3e50;"></span>
                         <button class="koledar-nav-btn" onclick="navigirajKoledarPrestavitev(1)">▶</button>
                     </div>
-                    <div id="koledar-prestavitev-mreza" class="koledar-mreza mreza-7"></div>
                 </div>
 
                 <div class="minute-sekcija">
@@ -189,6 +191,19 @@
                     <div class="podatek-vrstica">Cena posamezne ure (€):</div>
                     <input type="number" id="vnos-cene-ure" value="20" style="width: 80px; padding: 6px; text-align: center; font-size: 16px; border-radius: 6px; border: 1px solid #cbd5e0; margin-bottom: 10px;">
                     <button class="btn-akcija" style="background-color: #9b59b6; width: 100%; display: block;" onclick="generirajPodatkeRacuna()">Pripravi račun</button>
+                </div>
+            </div>
+
+            <div class="koledar-ovoj-spodaj">
+                <div class="koledar-sekcija" style="margin-bottom: 0;">
+                    <div class="koledar-mreza-prikaz"></div>
+                    <div class="koledar-glava">
+                        <button class="koledar-nav-btn" onclick="navigirajKoledar(-1)">◀</button>
+                        <button class="koledar-nav-btn" onclick="skociNaAktualniTeden()">T</button>
+                        <span class="koledar-naslov-gumb koledar-naslov-prikaz" onclick="preklopiPogledKoledarja()"></span>
+                        <button class="koledar-nav-btn" onclick="skociNaAktualniDan()">D</button>
+                        <button class="koledar-nav-btn" onclick="navigirajKoledar(1)">▶</button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -349,7 +364,7 @@
         let koledarPogled = 'teden'; 
         let koledarPrestavitevDatum = new Date();
 
-        const slovenskiMeseci = ['Januar', 'Februar', 'Marec', 'April', 'Maj', 'Junij', 'Julij', 'Avgust', 'September', 'Oktober', 'November', 'December'];
+        const slovenskiMeseci = ['JAN', 'FEB', 'MAR', 'APR', 'MAJ', 'JUN', 'JUL', 'AVG', 'SEP', 'OKT', 'NOV', 'DEC'];
         const slovenskiDneviKratki = ['P', 'T', 'S', 'Č', 'P', 'S', 'N'];
 
         function dodajDanPrekoGesla() {
@@ -555,11 +570,14 @@
             let mreze = document.querySelectorAll('.koledar-mreza-prikaz');
             let danes = new Date();
 
+            let polnoLeto = koledarDatum.getFullYear();
+            let kratkoLeto = String(polnoLeto).slice(-2);
+
             let tekstGlave = '';
             if (koledarPogled === 'leto') {
-                tekstGlave = koledarDatum.getFullYear() + ' ▾';
+                tekstGlave = kratkoLeto + ' ▾';
             } else {
-                tekstGlave = slovenskiMeseci[koledarDatum.getMonth()] + ' ' + koledarDatum.getFullYear() + ' ▾';
+                tekstGlave = slovenskiMeseci[koledarDatum.getMonth()] + ' ' + kratkoLeto + ' ▾';
             }
 
             glave.forEach(glava => glava.innerText = tekstGlave);
@@ -613,7 +631,7 @@
                     slovenskiMeseci.forEach((m, indeks) => {
                         let klasi = 'koledar-mesec-celica';
                         if (indeks === danes.getMonth() && koledarDatum.getFullYear() === danes.getFullYear()) klasi += ' trenutni-mesec';
-                        mreza.innerHTML += `<div class="${klasi}" onclick="klikniMesecKoledarja(${indeks})">${m.substring(0, 3)}.</div>`;
+                        mreza.innerHTML += `<div class="${klasi}" onclick="klikniMesecKoledarja(${indeks})">${m}</div>`;
                     });
                 }
             });
@@ -659,6 +677,28 @@
             osveziKoledar();
         }
 
+        function skociNaAktualniTeden() {
+            koledarDatum = new Date();
+            koledarPogled = 'teden';
+            osveziKoledar();
+            prikaziZaslon('zaslon-dnevi');
+        }
+
+        function skociNaAktualniDan() {
+            koledarDatum = new Date();
+            koledarPogled = 'teden';
+            osveziKoledar();
+            
+            let danVTednu = koledarDatum.getDay();
+            let nasIndeks = danVTednu === 0 ? 6 : danVTednu - 1;
+            let konf = Object.values(konfiguracijaDnevov).find(d => d.indeks === nasIndeks);
+            let imeDneva = konf.ime;
+            
+            let dan = koledarDatum.getDate();
+            let mesec = koledarDatum.getMonth() + 1;
+            izberiDan(imeDneva, `${dan}. ${mesec}.`, koledarDatum.getTime());
+        }
+
         function preklopiKoledarPrestavitev() {
             let sekcija = document.getElementById('sekcija-koledar-prestavitev');
             if (sekcija.style.display === 'none') {
@@ -675,9 +715,10 @@
             mreza.innerHTML = '';
 
             let leto = koledarPrestavitevDatum.getFullYear();
+            let kratkoLeto = String(leto).slice(-2);
             let mesec = koledarPrestavitevDatum.getMonth();
 
-            glava.innerText = slovenskiMeseci[mesec] + ' ' + leto;
+            glava.innerText = slovenskiMeseci[mesec] + ' ' + kratkoLeto;
             slovenskiDneviKratki.forEach(d => mreza.innerHTML += `<div class="koledar-dan-ime">${d}</div>`);
 
             let prviDan = new Date(leto, mesec, 1);
