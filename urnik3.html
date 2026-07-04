@@ -22,10 +22,12 @@ HTML
         
         .koledar-ovoj-spodaj { padding: 10px 20px 20px 20px; flex-shrink: 0; background: white; z-index: 10; border-top: 1px solid #f0f0f0; box-shadow: 0 -4px 10px rgba(0,0,0,0.02); }
         
-        .glava-strani { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #eee; padding-bottom: 10px; margin-bottom: 15px; }
-        .glava-strani h2, .glava-strani h3 { margin: 0; color: #2c3e50; font-size: 20px; }
+        .glava-strani { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #eee; padding-bottom: 10px; margin-bottom: 15px; position: relative; }
+        .glava-strani h2, .glava-strani h3 { margin: 0; color: #2c3e50; font-size: 20px; display: none; }
         
-        .ura-desno { font-size: 18px; font-weight: bold; color: #7f8c8d; background: #ebdcb0; padding: 4px 8px; border-radius: 6px; font-family: monospace; }
+        .datum-levo { font-size: 20px; color: #2c3e50; font-weight: bold; }
+        .ura-desno { font-size: 20px; color: #2c3e50; font-weight: bold; }
+        .ime-sredina { position: absolute; left: 50%; transform: translateX(-50%); margin: 0; font-size: 20px; color: #2c3e50; font-weight: bold; white-space: nowrap; }
         
         .btn-meni { display: block; width: 100%; padding: 15px; margin: 10px 0; font-size: 16px; font-weight: bold; text-align: left; background-color: #3498db; color: white; border: none; border-radius: 8px; cursor: pointer; height: auto; }
         .btn-meni:active { background-color: #2980b9; }
@@ -96,7 +98,7 @@ HTML
         <div id="zaslon-dnevi" class="zaslon aktiven">
             <div class="fiksna-glava">
                 <div class="glava-strani">
-                    <h2>Urnik - Dnevi</h2>
+                    <div class="datum-levo prikaz-datuma">PON 24.6.</div>
                     <div class="ura-desno prikaz-ure">00:00</div>
                 </div>
             </div>
@@ -123,7 +125,7 @@ HTML
         <div id="zaslon-ucenci" class="zaslon">
             <div class="fiksna-glava">
                 <div class="glava-strani">
-                    <h2 id="naslov-dneva">Učenci</h2>
+                    <div class="datum-levo prikaz-datuma">PON 24.6.</div>
                     <div class="ura-desno prikaz-ure">00:00</div>
                 </div>
             </div>
@@ -150,7 +152,8 @@ HTML
         <div id="zaslon-podatki" class="zaslon">
             <div class="fiksna-glava">
                 <div class="glava-strani">
-                    <h3 id="podatki-ime">Ime Priimek</h3>
+                    <div class="datum-levo prikaz-datuma">PON 24.6.</div>
+                    <div id="podatki-ime" class="ime-sredina">Ime Priimek</div>
                     <div class="ura-desno prikaz-ure">00:00</div>
                 </div>
             </div>
@@ -793,6 +796,13 @@ HTML
             let ure = String(danes.getHours()).padStart(2, '0');
             let minute = String(danes.getMinutes()).padStart(2, '0');
             document.querySelectorAll('.prikaz-ure').forEach(el => el.innerText = ure + ':' + minute);
+            
+            let dneviSlo = ['NED', 'PON', 'TOR', 'SRE', 'ČET', 'PET', 'SOB'];
+            let dan = danes.getDate();
+            let mesec = danes.getMonth() + 1;
+            let imeDneva = dneviSlo[danes.getDay()];
+            let datumTekst = `${imeDneva} ${dan}.${mesec}.`;
+            document.querySelectorAll('.prikaz-datuma').forEach(el => el.innerText = datumTekst);
         }
 
         let zgodovinaZaslonov = ['zaslon-dnevi'];
@@ -860,7 +870,7 @@ HTML
             if (timestamp) {
                 koledarDatum = new Date(timestamp); 
             }
-            document.getElementById('naslov-dneva').innerText = dan + ' ' + (datumTekst ? datumTekst : '');
+            // Izbrisana je vrstica, ki je spreminjala stari naslov-dneva
             osveziSeznamUcencev();
             prikaziZaslon('zaslon-ucenci');
         }
