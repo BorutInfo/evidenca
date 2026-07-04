@@ -637,46 +637,6 @@ HTML
             });
 
             osveziSeznamDnevov();
-            aktivirajZdrseKoledarja();
-        }
-
-        function aktivirajZdrseKoledarja() {
-            let mreze = document.querySelectorAll('.koledar-mreza-prikaz');
-            mreze.forEach(mreza => {
-                let startX, startY, isMoving = false;
-                
-                mreza.addEventListener('touchstart', (e) => {
-                    startX = e.touches[0].clientX;
-                    startY = e.touches[0].clientY;
-                    isMoving = true;
-                }, { passive: true });
-
-                mreza.addEventListener('touchmove', (e) => {
-                    if (!isMoving) return;
-                    let currentX = e.touches[0].clientX;
-                    let currentY = e.touches[0].clientY;
-                    let diffX = currentX - startX;
-                    
-                    // Omogočimo "lepljenje" koledarja na prst (vizualni feedback)
-                    mreza.style.transform = `translateX(${diffX}px)`;
-                }, { passive: true });
-
-                mreza.addEventListener('touchend', (e) => {
-                    if (!isMoving) return;
-                    isMoving = false;
-                    let endX = e.changedTouches[0].clientX;
-                    let diffX = endX - startX;
-                    
-                    // Resetiramo vizualni zamik
-                    mreza.style.transform = 'translateX(0px)';
-
-                    // Sproži menjavo le, če je premik konkreten (več kot 100px)
-                    // To prepreči nenamerne skoke ob rahlem dotiku
-                    if (Math.abs(diffX) > 100) {
-                        navigirajKoledar(diffX > 0 ? -1 : 1);
-                    }
-                }, { passive: true });
-            });
         }
 
         function preklopiPogledKoledarja() {
@@ -851,14 +811,28 @@ HTML
         function posodobiGumbNazaj(aktivenZaslon) {
             let btnNazaj = document.getElementById('ikona-nazaj');
             if(btnNazaj) {
+                // 1. Najprej očistimo status 'aktivna' na vseh ikonah v nogi
+                document.querySelectorAll('.ikona-noga').forEach(i => {
+                    if(i.id !== 'ikona-nazaj') i.classList.remove('aktivna');
+                });
+
+                // 2. Preverimo in prilagodimo trenutni zaslon
                 if (aktivenZaslon === 'zaslon-dnevi') {
                     btnNazaj.classList.add('neaktivna');
-                    document.querySelectorAll('.ikona-noga').forEach(i => {
-                        if(i.id !== 'ikona-nazaj') i.classList.remove('aktivna');
-                    });
                     zgodovinaZaslonov = ['zaslon-dnevi']; 
                 } else {
                     btnNazaj.classList.remove('neaktivna');
+                    
+                    // 3. Centralizirano preverjanje za osvetlitev prave ikone
+                    if (aktivenZaslon === 'zaslon-kontakti') {
+                        document.getElementById('ikona-kontakti').classList.add('aktivna');
+                    }
+                    if (aktivenZaslon === 'zaslon-izdaj-racune') {
+                        document.getElementById('ikona-racuni').classList.add('aktivna');
+                    }
+                    if (aktivenZaslon === 'zaslon-nastavitve') {
+                        document.getElementById('ikona-nastavitve').classList.add('aktivna');
+                    }
                 }
             }
         }
@@ -879,10 +853,6 @@ HTML
         
         function odpriZaslonMeni(id, idIkone) {
             prikaziZaslon(id);
-            document.querySelectorAll('.ikona-noga').forEach(i => {
-                if(i.id !== 'ikona-nazaj') i.classList.remove('aktivna');
-            });
-            if (idIkone) document.getElementById(idIkone).classList.add('aktivna');
         }
 
         function izberiDan(dan, datumTekst, timestamp) {
