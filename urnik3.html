@@ -168,6 +168,7 @@
                 </div>
 
                 <div class="minute-sekcija">
+                    <div id="opozorilo-prekrivanje" style="display: none; color: #e74c3c; font-weight: bold; font-size: 14px; margin-bottom: 10px; text-align: center;">Podaljšanje ure je prekrilo naslednjo uro!</div>
                     <div class="podatek-vrstica">Dolžina ure:</div>
                     <div class="okence-minut" id="okence-izpis" onclick="prikaziGumbaZaMinute()">30 min</div>
                     
@@ -799,6 +800,32 @@
             aktivirajSledilnikeZdrsa();
         }
 
+        function preveriInPrikaziPrekrivanje() {
+            let opozoriloEl = document.getElementById('opozorilo-prekrivanje');
+            let dan = izbraniDan;
+            let indeksTrenutnega = bazaUcencev[dan].findIndex(u => u.id === trenutniUcenec.id);
+            
+            if (indeksTrenutnega === -1 || indeksTrenutnega === bazaUcencev[dan].length - 1) {
+                if(opozoriloEl) opozoriloEl.style.display = 'none';
+                return;
+            }
+
+            let naslednjiUcenec = bazaUcencev[dan][indeksTrenutnega + 1];
+            
+            let deliTrenutni = trenutniUcenec.termin.split(':');
+            let zacetekTrenutniMinut = parseInt(deliTrenutni[0], 10) * 60 + parseInt(deliTrenutni[1], 10);
+            let konecTrenutniMinut = zacetekTrenutniMinut + trenutniUcenec.minute;
+
+            let deliNaslednji = naslednjiUcenec.termin.split(':');
+            let zacetekNaslednjiMinut = parseInt(deliNaslednji[0], 10) * 60 + parseInt(deliNaslednji[1], 10);
+
+            if (konecTrenutniMinut > zacetekNaslednjiMinut) {
+                if(opozoriloEl) opozoriloEl.style.display = 'block';
+            } else {
+                if(opozoriloEl) opozoriloEl.style.display = 'none';
+            }
+        }
+
         function prikaziProfilUcenca(dan, indeks) {
             trenutniUcenec = bazaUcencev[dan][indeks];
             
@@ -810,6 +837,8 @@
             document.getElementById('vnos-cene-ure').value = trenutniUcenec.cenaUre || 20;
             
             document.getElementById('minute-gumbi').style.display = 'none';
+            
+            preveriInPrikaziPrekrivanje();
             
             prikaziZaslon('zaslon-podatki');
         }
@@ -910,8 +939,41 @@
                     if (formatiranTermin.length === 4 && formatiranTermin.indexOf(':') === 1) {
                          formatiranTermin = "0" + formatiranTermin;
                     }
+
+                    let noviZacetekDeli = formatiranTermin.split(':');
+                    let noviZacetekMinut = parseInt(noviZacetekDeli[0], 10) * 60 + parseInt(noviZacetekDeli[1], 10);
+                    let noviKonecMinut = noviZacetekMinut + trenutniUcenec.minute;
+
+                    let prekrivanje = false;
+                    let dan = izbraniDan;
+                    for (let i = 0; i < bazaUcencev[dan].length; i++) {
+                        let obstojeci = bazaUcencev[dan][i];
+                        if (obstojeci.id === trenutniUcenec.id) continue;
+                        
+                        let obstojeciDeli = obstojeci.termin.split(':');
+                        let obstojeciZacetekMinut = parseInt(obstojeciDeli[0], 10) * 60 + parseInt(obstojeciDeli[1], 10);
+                        let obstojeciKonecMinut = obstojeciZacetekMinut + obstojeci.minute;
+
+                        if (noviZacetekMinut < obstojeciKonecMinut && noviKonecMinut > obstojeciZacetekMinut) {
+                            prekrivanje = true;
+                            break;
+                        }
+                    }
+
+                    if (prekrivanje) {
+                        alert("Vpis ni mogoč. Ure se prekrivajo.");
+                        return;
+                    }
+
                     trenutniUcenec.termin = formatiranTermin;
                     document.getElementById('podatki-termin').innerText = formatiranTermin;
+
+                    bazaUcencev[dan].sort((a, b) => {
+                        if (a.termin < b.termin) return -1;
+                        if (a.termin > b.termin) return 1;
+                        return 0;
+                    });
+
                     shraniPodatke();
                 } else {
                     alert("Napačen format ure! Vnesite uro v obliki HH:MM (od 00:00 do 23:59).");
@@ -931,7 +993,39 @@
                     if (formatiranTermin.length === 4 && formatiranTermin.indexOf(':') === 1) {
                          formatiranTermin = "0" + formatiranTermin;
                     }
+
+                    let noviZacetekDeli = formatiranTermin.split(':');
+                    let noviZacetekMinut = parseInt(noviZacetekDeli[0], 10) * 60 + parseInt(noviZacetekDeli[1], 10);
+                    let noviKonecMinut = noviZacetekMinut + ucenec.minute;
+
+                    let prekrivanje = false;
+                    for (let i = 0; i < bazaUcencev[dan].length; i++) {
+                        let obstojeci = bazaUcencev[dan][i];
+                        if (obstojeci.id === ucenec.id) continue;
+                        
+                        let obstojeciDeli = obstojeci.termin.split(':');
+                        let obstojeciZacetekMinut = parseInt(obstojeciDeli[0], 10) * 60 + parseInt(obstojeciDeli[1], 10);
+                        let obstojeciKonecMinut = obstojeciZacetekMinut + obstojeci.minute;
+
+                        if (noviZacetekMinut < obstojeciKonecMinut && noviKonecMinut > obstojeciZacetekMinut) {
+                            prekrivanje = true;
+                            break;
+                        }
+                    }
+
+                    if (prekrivanje) {
+                        alert("Vpis ni mogoč. Ure se prekrivajo.");
+                        return;
+                    }
+
                     ucenec.termin = formatiranTermin;
+
+                    bazaUcencev[dan].sort((a, b) => {
+                        if (a.termin < b.termin) return -1;
+                        if (a.termin > b.termin) return 1;
+                        return 0;
+                    });
+
                     shraniPodatke();
                     osveziSeznamUcencev();
                 } else {
@@ -958,8 +1052,20 @@
         }
 
         function prilagodiMinute(sprememba) {
-            trenutniUcenec.minute = Math.max(0, trenutniUcenec.minute + sprememba);
+            let noveMinute = Math.max(5, trenutniUcenec.minute + sprememba); 
+            
+            let deliTrenutni = trenutniUcenec.termin.split(':');
+            let zacetekTrenutniMinut = parseInt(deliTrenutni[0], 10) * 60 + parseInt(deliTrenutni[1], 10);
+            
+            if (zacetekTrenutniMinut + noveMinute > 1440) { 
+                alert("Opozorilo: Trajanje ure bi preseglo polnoč. Vnos ni mogoč.");
+                return;
+            }
+
+            trenutniUcenec.minute = noveMinute;
             document.getElementById('okence-izpis').innerText = trenutniUcenec.minute + " min";
+            
+            preveriInPrikaziPrekrivanje();
             shraniPodatke();
         }
 
