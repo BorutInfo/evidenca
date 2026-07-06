@@ -28,8 +28,15 @@
         .ura-desno { font-size: 20px; color: #2c3e50; font-weight: bold; }
         .ime-sredina { position: absolute; left: 50%; transform: translateX(-50%); margin: 0; font-size: 20px; color: #2c3e50; font-weight: bold; white-space: nowrap; }
         
-        .btn-meni { display: block; width: 100%; padding: 15px; margin: 10px 0; font-size: 16px; font-weight: bold; text-align: left; background-color: #3498db; color: white; border: none; border-radius: 8px; cursor: pointer; height: auto; }
+        .btn-meni { display: block; width: 100%; padding: 15px; margin: 10px 0; font-size: 16px; font-weight: bold; text-align: left; background-color: #3498db; color: white; border: none; border-radius: 8px; cursor: pointer; height: auto; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
         .btn-meni:active { background-color: #2980b9; }
+        
+        .izbran-ucenec { background-color: #1a5276 !important; border: 3px solid #2ecc71 !important; box-shadow: inset 0 0 5px rgba(0,0,0,0.2); }
+        
+        .sistemski-meni-ovoj { background: white; border: 2px solid #bdc3c7; border-radius: 8px; margin: -5px 0 15px 0; padding: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.15); display: flex; flex-direction: column; gap: 8px; position: relative; z-index: 5; }
+        .btn-podmeni { background-color: #f8f9fa; color: #2c3e50; border: 1px solid #dcdde1; border-radius: 6px; padding: 12px; font-size: 15px; font-weight: bold; text-align: left; cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
+        .btn-podmeni:active { background-color: #e2e6ea; }
+        .btn-podmeni-ikona { display: flex; align-items: center; gap: 10px; }
         
         .termin-znacka { background-color: #2c3e50; color: #f1c40f; padding: 2px 6px; border-radius: 4px; margin-right: 10px; font-family: monospace; cursor: pointer; border: 1px solid #f1c40f; display: inline-block; vertical-align: middle; }
         .termin-znacka:hover { background-color: #f1c40f; color: #2c3e50; }
@@ -355,6 +362,12 @@
 
         let izbraniDan = '';
         let trenutniUcenec = null;
+        let izbraniUcenci = [];
+        let casovnikPritiska = null;
+        let zacetniX = 0;
+        let zacetniY = 0;
+        let dolgPritiskIzveden = false;
+        let meniOdprt = false;
 
         let koledarDatum = new Date(); 
         let koledarPogled = 'teden';
@@ -677,7 +690,21 @@
         }
 
         function klikNaUredi() {
-            alert("Za urejanje najprej izberi (dolg pritisk gumba).");
+            if (izbraniUcenci.length === 0) {
+                alert("Za urejanje najprej izberi (dolg pritisk gumba).");
+            } else {
+                meniOdprt = !meniOdprt;
+                osveziSeznamUcencev();
+                
+                if (meniOdprt) {
+                    setTimeout(() => {
+                        let meniElement = document.querySelector('.sistemski-meni-ovoj');
+                        if (meniElement) {
+                            meniElement.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                        }
+                    }, 50);
+                }
+            }
         }
 
         function osveziSeznamUcencev() {
@@ -694,17 +721,50 @@
             if (ucenecList.length === 0) {
                 izpis = '<div style="text-align:center; padding: 20px; color: #7f8c8d;">Za ta dan ni vpisanih učencev.</div>';
             } else {
-                ucenecList.forEach((item) => {
+                let indeksZadnjegaOznacenega = -1;
+                ucenecList.forEach((item, indeks) => {
+                    if (izbraniUcenci.includes(item.ucenec.id)) {
+                        indeksZadnjegaOznacenega = indeks;
+                    }
+                });
+
+                ucenecList.forEach((item, indeks) => {
                     let ucenec = item.ucenec;
                     let prikazanTermin = ucenec.termin;
+                    let dodatniRazred = izbraniUcenci.includes(ucenec.id) ? 'izbran-ucenec' : '';
 
                     izpis += `
-                    <button class="btn-meni" style="width: 100%; padding: 12px 15px;" onclick="prikaziProfilUcenca('${item.izvorniDan}', ${item.originalIndeks})">
-                        <div style="width: 100%;">
-                            <span class="termin-znacka" onclick="urediTerminIzSeznama(event, '${item.izvorniDan}', ${item.originalIndeks})">${prikazanTermin}</span>
+                    <button class="btn-meni ${dodatniRazred}" style="width: 100%; padding: 12px 15px; box-sizing: border-box;" 
+                        ontouchstart="zacniDolgPritisk(event, ${ucenec.id}, '${item.izvorniDan}', ${item.originalIndeks})" 
+                        ontouchend="koncajDolgPritisk(event)" 
+                        ontouchmove="premakniDolgPritisk(event)" 
+                        onmousedown="zacniDolgPritisk(event, ${ucenec.id}, '${item.izvorniDan}', ${item.originalIndeks})" 
+                        onmouseup="koncajDolgPritisk(event)" 
+                        onmousemove="premakniDolgPritisk(event)" 
+                        onmouseleave="koncajDolgPritisk(event)"
+                        onclick="upravljajKlikUcenca(event, '${item.izvorniDan}', ${item.originalIndeks}, ${ucenec.id})">
+                        <div style="width: 100%; pointer-events: none;">
+                            <span class="termin-znacka" style="pointer-events: auto;" onclick="urediTerminIzSeznama(event, '${item.izvorniDan}', ${item.originalIndeks})">${prikazanTermin}</span>
                             <strong>${ucenec.ime}</strong>
                         </div>
                     </button>`;
+
+                    if (indeks === indeksZadnjegaOznacenega && izbraniUcenci.length > 0 && meniOdprt) {
+                        izpis += `
+                        <div class="sistemski-meni-ovoj">
+                            <button class="btn-podmeni" onclick="alert('Kliknil si Premakni za x minut'); event.stopPropagation();">
+                                <span class="btn-podmeni-ikona"><span>🕒</span> Premakni za x minut</span>
+                            </button>
+                            <button class="btn-podmeni" onclick="alert('Kliknil si Pauziraj učenca'); event.stopPropagation();">
+                                <span class="btn-podmeni-ikona"><span>⏸️</span> Pauziraj učenca</span>
+                                <span style="color: #bdc3c7;">❯</span>
+                            </button>
+                            <button class="btn-podmeni" onclick="alert('Kliknil si Zbriši učenca'); event.stopPropagation();">
+                                <span class="btn-podmeni-ikona"><span>🗑️</span> Zbriši učenca</span>
+                                <span style="color: #bdc3c7;">❯</span>
+                            </button>
+                        </div>`;
+                    }
                 });
             }
             
@@ -734,6 +794,65 @@
                 if(opozoriloEl) opozoriloEl.style.display = 'block';
             } else {
                 if(opozoriloEl) opozoriloEl.style.display = 'none';
+            }
+        }
+
+        function zacniDolgPritisk(event, idUcenca, dan, indeks) {
+            if (event.target.classList.contains('termin-znacka')) return; 
+            
+            let dotik = event.touches ? event.touches[0] : event;
+            zacetniX = dotik.clientX;
+            zacetniY = dotik.clientY;
+            dolgPritiskIzveden = false; 
+            
+            casovnikPritiska = setTimeout(() => {
+                dolgPritiskIzveden = true; 
+                if ('vibrate' in navigator) navigator.vibrate(50);
+                
+                if (!izbraniUcenci.includes(idUcenca)) {
+                    izbraniUcenci.push(idUcenca);
+                }
+                osveziSeznamUcencev();
+            }, 650);
+        }
+
+        function premakniDolgPritisk(event) {
+            if (!casovnikPritiska) return;
+            
+            let dotik = event.touches ? event.touches[0] : event;
+            let premikX = Math.abs(dotik.clientX - zacetniX);
+            let premikY = Math.abs(dotik.clientY - zacetniY);
+            
+            if (premikX > 10 || premikY > 10) {
+                clearTimeout(casovnikPritiska);
+                casovnikPritiska = null;
+            }
+        }
+
+        function koncajDolgPritisk(event) {
+            if (casovnikPritiska) {
+                clearTimeout(casovnikPritiska);
+                casovnikPritiska = null;
+            }
+        }
+
+        function upravljajKlikUcenca(event, dan, indeks, idUcenca) {
+            if (event.target.classList.contains('termin-znacka')) return; 
+            
+            if (dolgPritiskIzveden) {
+                dolgPritiskIzveden = false; 
+                return;
+            }
+            
+            let pozicija = izbraniUcenci.indexOf(idUcenca);
+            if (pozicija !== -1) {
+                izbraniUcenci.splice(pozicija, 1);
+                if (izbraniUcenci.length === 0) {
+                    meniOdprt = false;
+                }
+                osveziSeznamUcencev();
+            } else {
+                prikaziProfilUcenca(dan, indeks);
             }
         }
 
