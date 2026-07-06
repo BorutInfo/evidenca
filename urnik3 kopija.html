@@ -1,0 +1,1223 @@
+<!DOCTYPE html>
+<html lang="sl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Napredna Evidenca s Termini</title>
+    <link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#2c3e50">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <style>
+        body { font-family: Arial, sans-serif; margin: 0; padding: 0; background-color: #f5f6fa; color: #333; display: flex; flex-direction: column; height: 100vh; height: 100dvh; overflow: hidden; }
+        
+        #glavni-vsebnik { flex: 1; display: flex; flex-direction: column; min-height: 0; position: relative; overflow: hidden; width: 100%; max-width: 400px; margin: 0 auto; background: white; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        .zaslon { display: none; flex: 1; flex-direction: column; min-height: 0; width: 100%; background: white; }
+        .aktiven { display: flex; }
+        
+        /* Novi stili za fiksno glavo in drsni sredinski del */
+        .fiksna-glava { padding: 20px 20px 0 20px; flex-shrink: 0; background: white; z-index: 10; }
+        .vsebina-scroll { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 10px 20px 20px 20px; min-height: 0; }
+        
+        .koledar-ovoj-spodaj { padding: 10px 20px 20px 20px; flex-shrink: 0; background: white; z-index: 10; border-top: 1px solid #f0f0f0; box-shadow: 0 -4px 10px rgba(0,0,0,0.02); }
+        
+        .glava-strani { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #eee; padding-bottom: 10px; margin-bottom: 15px; position: relative; }
+        .glava-strani h2, .glava-strani h3 { margin: 0; color: #2c3e50; font-size: 20px; display: none; }
+        
+        .datum-levo { font-size: 20px; color: #2c3e50; font-weight: bold; }
+        .ura-desno { font-size: 20px; color: #2c3e50; font-weight: bold; }
+        .ime-sredina { position: absolute; left: 50%; transform: translateX(-50%); margin: 0; font-size: 20px; color: #2c3e50; font-weight: bold; white-space: nowrap; }
+        
+        .btn-meni { display: block; width: 100%; padding: 15px; margin: 10px 0; font-size: 16px; font-weight: bold; text-align: left; background-color: #3498db; color: white; border: none; border-radius: 8px; cursor: pointer; height: auto; }
+        .btn-meni:active { background-color: #2980b9; }
+        
+        .termin-znacka { background-color: #2c3e50; color: #f1c40f; padding: 2px 6px; border-radius: 4px; margin-right: 10px; font-family: monospace; cursor: pointer; border: 1px solid #f1c40f; display: inline-block; vertical-align: middle; }
+        .termin-znacka:hover { background-color: #f1c40f; color: #2c3e50; }
+
+        .podatek-vrstica { font-size: 16px; margin: 12px 0; }
+        .glavni-gumbi { display: flex; flex-direction: column; gap: 10px; margin: 20px 0; }
+        .btn-akcija { flex: 1; padding: 15px; font-size: 14px; border: none; border-radius: 8px; cursor: pointer; color: white; font-weight: bold; }
+        .btn-potrdi { background-color: #2ecc71; }
+        .btn-odpovej { background-color: #e74c3c; }
+        .btn-prestavljeno { background-color: #e67e22; }
+        
+        .minute-sekcija { background: #f8f9fa; padding: 15px; border-radius: 8px; margin-top: 20px; text-align: center; }
+        .okence-minut { display: inline-block; padding: 10px 20px; background: #e2e8f0; font-weight: bold; border-radius: 5px; cursor: pointer; min-width: 60px; }
+        .Prilagodilnik-minut { display: none; margin-top: 15px; justify-content: center; gap: 15px; }
+        .btn-spon { padding: 10px 20px; font-size: 16px; border: none; background: #2c3e50; color: white; border-radius: 5px; cursor: pointer; }
+
+        .koledar-sekcija { background: #fdfdfd; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px; box-shadow: inset 0 1px 3px rgba(0,0,0,0.02); }
+        .koledar-glava { display: flex; justify-content: space-between; align-items: center; font-weight: bold; margin-top: 12px; color: #2c3e50; }
+        .koledar-naslov-gumb { cursor: pointer; font-size: 15px; background: #e2e8f0; padding: 5px 14px; border-radius: 20px; display: inline-block; font-weight: bold; }
+        .koledar-naslov-gumb:hover { background: #cbd5e0; }
+        .koledar-nav-btn { background: none; border: none; font-size: 14px; cursor: pointer; color: #3498db; padding: 5px 10px; font-weight: bold; }
+        .koledar-mreza { display: grid; gap: 4px; text-align: center; }
+        .mreza-7 { grid-template-columns: repeat(7, 1fr); }
+        .mreza-3 { grid-template-columns: repeat(3, 1fr); }
+        .koledar-dan-ime { font-size: 11px; color: #a0aec0; font-weight: bold; margin-bottom: 2px; }
+        .koledar-celica { padding: 6px 0; font-size: 13px; cursor: pointer; border-radius: 6px; color: #4a5568; }
+        .koledar-celica:hover { background-color: #edf2f7; }
+        .koledar-celica.trenutni-dan { background-color: #ebdcb0; color: #2c3e50; font-weight: bold; border: 1px solid #d6c494; }
+        .koledar-celica.izbran-dan { background-color: #3498db; color: white; font-weight: bold; }
+        .koledar-celica.izven-meseca { color: #cbd5e0; cursor: default; }
+        .koledar-celica.izven-meseca:hover { background: none; }
+        .koledar-mesec-celica { padding: 12px 0; font-size: 13px; cursor: pointer; border-radius: 6px; color: #2c3e50; font-weight: bold; }
+        .koledar-mesec-celica:hover { background-color: #edf2f7; }
+        .koledar-mesec-celica.trenutni-mesec { background-color: #ebdcb0; border: 1px solid #d6c494; }
+
+        .izpis-prestavitve { display: none; padding: 10px; background: #fff3e0; border: 1px solid #ffe0b2; border-radius: 8px; text-align: center; color: #e67e22; font-weight: bold; margin: 15px 0; font-size: 15px; }
+        
+        .element-ovoj { position: relative; overflow: hidden; margin: 10px 0; border-radius: 8px; background-color: #e74c3c; }
+        .element-ozadje-izbris { position: absolute; top: 0; right: 0; width: 100%; height: 100%; display: flex; align-items: center; justify-content: flex-end; padding-right: 20px; color: white; font-weight: bold; box-sizing: border-box; font-size: 16px; }
+        .dinamicni-izbris-element { position: relative; transition: transform 0.2s ease-out; z-index: 2; margin: 0 !important; }
+        .dinamicni-izbris-element.v-zdrsu { transition: none; }
+
+        /* NOVA NOGA IN IKONE */
+        .noga-ovoj { width: 100%; background-color: #2c3e50; display: flex; justify-content: center; z-index: 100; flex-shrink: 0; }
+        .noga-fiksna { width: 100%; max-width: 400px; display: flex; justify-content: space-around; align-items: center; padding: 8px 0; padding-bottom: max(8px, env(safe-area-inset-bottom)); }
+        .ikona-noga { display: flex; flex-direction: column; align-items: center; color: white; cursor: pointer; flex: 1; background: none; border: none; font-size: 22px; padding: 5px 0; opacity: 0.6; }
+        .ikona-noga.aktivna { opacity: 1; color: #f1c40f; }
+        .ikona-noga.neaktivna { opacity: 0.2; cursor: default; }
+        .ikona-tekst { font-size: 10px; margin-top: 4px; font-family: Arial, sans-serif; font-weight: bold; }
+
+        @media print {
+            body { background: white; padding: 0; display: block; height: auto; overflow: visible; }
+            #glavni-vsebnik { max-width: 100%; box-shadow: none; display: block; overflow: visible; }
+            .zaslon { display: none !important; height: auto; overflow: visible; }
+            #zaslon-racun { display: block !important; }
+            .skrij-pri-tiskanju { display: none !important; }
+            .vsebina-scroll { overflow: visible; padding: 0; }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="glavni-vsebnik">
+
+        <div id="zaslon-dnevi" class="zaslon aktiven">
+            <div class="fiksna-glava">
+                <div class="glava-strani">
+                    <div class="datum-levo prikaz-datuma">PON 24.6.</div>
+                    <div class="ura-desno prikaz-ure">00:00</div>
+                </div>
+            </div>
+
+            <div class="vsebina-scroll">
+                <div id="seznam-dnevov-izpis"></div>
+                <button class="btn-akcija btn-potrdi" style="width: 100%; margin-top: 15px; display: block; font-size: 16px;" onclick="dodajDanPrekoGesla()">+ Dodaj dan</button>
+            </div>
+
+            <div class="koledar-ovoj-spodaj">
+                <div class="koledar-sekcija" style="margin-bottom: 0;">
+                    <div id="koledar-mreza" class="koledar-mreza-prikaz"></div>
+                    <div class="koledar-glava">
+                        <button class="koledar-nav-btn" onclick="navigirajKoledar(-1)">◀</button>
+                        <button class="koledar-nav-btn" onclick="skociNaAktualniTeden()">T</button>
+                        <span id="koledar-naslov" class="koledar-naslov-gumb koledar-naslov-prikaz" onclick="preklopiPogledKoledarja()"></span>
+                        <button class="koledar-nav-btn" onclick="skociNaAktualniDan()">D</button>
+                        <button class="koledar-nav-btn" onclick="navigirajKoledar(1)">▶</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="zaslon-ucenci" class="zaslon">
+            <div class="fiksna-glava">
+                <div class="glava-strani">
+                    <div class="datum-levo prikaz-datuma">PON 24.6.</div>
+                    <div class="ura-desno prikaz-ure">00:00</div>
+                </div>
+            </div>
+
+            <div class="vsebina-scroll">
+                <div id="seznam-ucencev-izpis"></div>
+                <button class="btn-akcija btn-potrdi" style="width: 100%; margin-top: 15px; display: block; font-size: 16px;" onclick="dodajUcenca()">+ Dodaj učenca</button>
+            </div>
+
+            <div class="koledar-ovoj-spodaj">
+                <div class="koledar-sekcija" style="margin-bottom: 0;">
+                    <div class="koledar-mreza-prikaz"></div>
+                    <div class="koledar-glava">
+                        <button class="koledar-nav-btn" onclick="navigirajKoledar(-1)">◀</button>
+                        <button class="koledar-nav-btn" onclick="skociNaAktualniTeden()">T</button>
+                        <span class="koledar-naslov-gumb koledar-naslov-prikaz" onclick="preklopiPogledKoledarja()"></span>
+                        <button class="koledar-nav-btn" onclick="skociNaAktualniDan()">D</button>
+                        <button class="koledar-nav-btn" onclick="navigirajKoledar(1)">▶</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="zaslon-podatki" class="zaslon">
+            <div class="fiksna-glava">
+                <div class="glava-strani">
+                    <div class="datum-levo prikaz-datuma">PON 24.6.</div>
+                    <div id="podatki-ime" class="ime-sredina">Ime Priimek</div>
+                    <div class="ura-desno prikaz-ure">00:00</div>
+                </div>
+            </div>
+            
+            <div class="vsebina-scroll">
+                <div class="podatek-vrstica">Termin uredbe: <strong id="podatki-termin" style="cursor:pointer; color:#3498db;" onclick="urediTerminIzProfila()">13:00</strong> <span style="font-size:12px; color:#7f8c8d;">(klikni za spremembo)</span></div>
+                <div class="podatek-vrstica">Predvidenih ur v mesecu: <strong id="podatki-predvideno">4</strong></div>
+                <div class="podatek-vrstica">Izvedenih ur: <strong id="podatki-izvedeno">0</strong></div>
+                
+                <div class="glavni-gumbi">
+                    <button class="btn-akcija btn-potrdi" onclick="zabeleziUro(true)">✓ Izvedeno</button>
+                    <button class="btn-akcija btn-odpovej" onclick="zabeleziUro(false)">✗ Neizvedeno</button>
+                </div>
+
+                <div class="minute-sekcija">
+                    <div id="opozorilo-prekrivanje" style="display: none; color: #e74c3c; font-weight: bold; font-size: 14px; margin-bottom: 10px; text-align: center;">Podaljšanje ure je prekrilo naslednjo uro!</div>
+                    <div class="podatek-vrstica">Dolžina ure:</div>
+                    <div class="okence-minut" id="okence-izpis" onclick="prikaziGumbaZaMinute()">30 min</div>
+                    
+                    <div class="Prilagodilnik-minut" id="minute-gumbi">
+                        <button class="btn-spon" onclick="prilagodiMinute(-5)">- 5 min</button>
+                        <button class="btn-spon" onclick="prilagodiMinute(5)">+ 5 min</button>
+                    </div>
+                </div>
+
+                <div class="minute-sekcija" style="background: #f0f4f8; border: 1px solid #dce4ec;">
+                    <div class="podatek-vrstica">Cena posamezne ure (€):</div>
+                    <input type="number" id="vnos-cene-ure" value="20" style="width: 80px; padding: 6px; text-align: center; font-size: 16px; border-radius: 6px; border: 1px solid #cbd5e0; margin-bottom: 10px;">
+                    <button class="btn-akcija" style="background-color: #9b59b6; width: 100%; display: block;" onclick="generirajPodatkeRacuna()">Pripravi račun</button>
+                </div>
+            </div>
+
+            <div class="koledar-ovoj-spodaj">
+                <div class="koledar-sekcija" style="margin-bottom: 0;">
+                    <div class="koledar-mreza-prikaz"></div>
+                    <div class="koledar-glava">
+                        <button class="koledar-nav-btn" onclick="navigirajKoledar(-1)">◀</button>
+                        <button class="koledar-nav-btn" onclick="skociNaAktualniTeden()">T</button>
+                        <span class="koledar-naslov-gumb koledar-naslov-prikaz" onclick="preklopiPogledKoledarja()"></span>
+                        <button class="koledar-nav-btn" onclick="skociNaAktualniDan()">D</button>
+                        <button class="koledar-nav-btn" onclick="navigirajKoledar(1)">▶</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="zaslon-racun" class="zaslon">
+            <div class="fiksna-glava skrij-pri-tiskanju">
+                <div class="glava-strani">
+                    <h3>Predogled računa</h3>
+                </div>
+            </div>
+            <div class="vsebina-scroll">
+                <div id="vsebina-pdf-racuna" style="background: white; padding: 20px; border: 1px solid #ddd; border-radius: 8px; font-family: 'Courier New', Courier, monospace; font-size: 13px; color: #000; line-height: 1.4;">
+                </div>
+                <button class="btn-akcija btn-potrdi skrij-pri-tiskanju" style="width: 100%; margin-top: 15px; font-size: 16px;" onclick="window.print()">Shrani kot PDF / Natisni</button>
+            </div>
+        </div>
+
+        <div id="zaslon-kontakti" class="zaslon">
+            <div class="fiksna-glava">
+                <div class="glava-strani">
+                    <h2>Kontakti</h2>
+                    <div class="ura-desno prikaz-ure">00:00</div>
+                </div>
+            </div>
+            <div class="vsebina-scroll">
+                <p style="text-align:center; color:#7f8c8d; margin-top: 20px;">Stran je zaenkrat prazna.</p>
+            </div>
+        </div>
+
+        <div id="zaslon-izdaj-racune" class="zaslon">
+            <div class="fiksna-glava">
+                <div class="glava-strani">
+                    <h2>Izdaj račune</h2>
+                    <div class="ura-desno prikaz-ure">00:00</div>
+                </div>
+            </div>
+            <div class="vsebina-scroll">
+                <p style="text-align:center; color:#7f8c8d; margin-top: 20px;">Stran je zaenkrat prazna.</p>
+            </div>
+        </div>
+
+        <div id="zaslon-nastavitve" class="zaslon">
+            <div class="fiksna-glava">
+                <div class="glava-strani">
+                    <h2>Nastavitve</h2>
+                    <div class="ura-desno prikaz-ure">00:00</div>
+                </div>
+            </div>
+            <div class="vsebina-scroll">
+                <p style="text-align:center; color:#7f8c8d; margin-top: 20px;">Stran je zaenkrat prazna.</p>
+            </div>
+        </div>
+
+    </div>
+
+    <div class="noga-ovoj skrij-pri-tiskanju">
+        <div class="noga-fiksna">
+            <button id="ikona-nazaj" class="ikona-noga neaktivna" onclick="pojdiNazaj()">
+                <span>❮</span>
+                <span class="ikona-tekst">Nazaj</span>
+            </button>
+            <button id="ikona-kontakti" class="ikona-noga" onclick="odpriZaslonMeni('zaslon-kontakti', 'ikona-kontakti')">
+                <span>👥</span>
+                <span class="ikona-tekst">Kontakti</span>
+            </button>
+            <button id="ikona-racuni" class="ikona-noga" onclick="odpriZaslonMeni('zaslon-izdaj-racune', 'ikona-racuni')">
+                <span>📄</span>
+                <span class="ikona-tekst">Računi</span>
+            </button>
+            <button id="ikona-nastavitve" class="ikona-noga" onclick="odpriZaslonMeni('zaslon-nastavitve', 'ikona-nastavitve')">
+                <span>⚙️</span>
+                <span class="ikona-tekst">Nastavitve</span>
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // Globalna baza podatkov
+        let bazaUcencev = {
+            'Ponedeljek': [
+                { id: 1, ime: 'Janez Novak', predvideno: 4, izvedeno: 1, minute: 30, termin: '', cenaUre: 20 },
+                { id: 2, ime: 'Maja Horvat', predvideno: 4, izvedeno: 0, minute: 30, termin: '', cenaUre: 20 },
+                { id: 3, ime: 'Luka Zupan', predvideno: 4, izvedeno: 2, minute: 30, termin: '', cenaUre: 20 },
+                { id: 4, ime: 'Katarina Eržen', predvideno: 4, izvedeno: 1, minute: 30, termin: '', cenaUre: 20 }
+            ],
+            'Torek': [
+                { id: 5, ime: 'Ana Kovač', predvideno: 4, izvedeno: 1, minute: 30, termin: '', cenaUre: 20 },
+                { id: 6, ime: 'Miha Golob', predvideno: 4, izvedeno: 3, minute: 30, termin: '', cenaUre: 20 },
+                { id: 7, ime: 'Ema Kralj', predvideno: 4, izvedeno: 0, minute: 30, termin: '', cenaUre: 20 }
+            ],
+            'Sreda': [
+                { id: 8, ime: 'Peter Car', predvideno: 4, izvedeno: 0, minute: 30, termin: '', cenaUre: 20 },
+                { id: 9, ime: 'Sara Vidmar', predvideno: 4, izvedeno: 2, minute: 30, termin: '', cenaUre: 20 }
+            ],
+            'Četrtek': [
+                { id: 10, ime: 'Borut Pahor', predvideno: 4, izvedeno: 1, minute: 30, termin: '', cenaUre: 20 }
+            ],
+            'Petek': [
+                { id: 11, ime: 'Rok Kos', predvideno: 4, izvedeno: 4, minute: 30, termin: '', cenaUre: 20 }
+            ]
+        };
+
+        const konfiguracijaDnevov = {
+            'pon': { ime: 'Ponedeljek', kratica: 'PON', indeks: 0 },
+            'tor': { ime: 'Torek', kratica: 'TOR', indeks: 1 },
+            'sre': { ime: 'Sreda', kratica: 'SRE', indeks: 2 },
+            'čet': { ime: 'Četrtek', kratica: 'ČET', indeks: 3 },
+            'pet': { ime: 'Petek', kratica: 'PET', indeks: 4 },
+            'sob': { ime: 'Sobota', kratica: 'SOB', indeks: 5 },
+            'ned': { ime: 'Nedelja', kratica: 'NED', indeks: 6 }
+        };
+
+        let prikazaniDnevi = ['Ponedeljek', 'Torek', 'Sreda', 'Četrtek', 'Petek'];
+
+        // --- SISTEM ZA SHRANJEVANJE (localStorage) ---
+        function shraniPodatke() {
+            localStorage.setItem('bazaUcencev', JSON.stringify(bazaUcencev));
+            localStorage.setItem('prikazaniDnevi', JSON.stringify(prikazaniDnevi));
+        }
+
+        function naloziPodatke() {
+            let shranjenaBaza = localStorage.getItem('bazaUcencev');
+            let shranjeniDnevi = localStorage.getItem('prikazaniDnevi');
+            
+            if (shranjenaBaza) {
+                bazaUcencev = JSON.parse(shranjenaBaza);
+            } else {
+                nastaviZacetneTermine();
+            }
+            
+            if (shranjeniDnevi) {
+                prikazaniDnevi = JSON.parse(shranjeniDnevi);
+            }
+        }
+
+        function nastaviZacetneTermine() {
+            for (let dan in bazaUcencev) {
+                let ura = 13;
+                let minute = 0;
+                let prekinjeno = false;
+                bazaUcencev[dan].forEach(ucenec => {
+                    if (prekinjeno) return;
+                    if (ura >= 24) {
+                        alert("Vnos ni več mogoč. Prišli ste do ure 23:59.");
+                        prekinjeno = true;
+                        return;
+                    }
+                    let strUre = String(ura).padStart(2, '0');
+                    let strMin = String(minute).padStart(2, '0');
+                    ucenec.termin = `${strUre}:${strMin}`;
+                    minute += 30;
+                    if (minute >= 60) {
+                        ura += 1;
+                        minute = 0;
+                    }
+                });
+            }
+            shraniPodatke();
+        }
+
+        let izbraniDan = '';
+        let trenutniUcenec = null;
+
+        let koledarDatum = new Date(); 
+        let koledarPogled = 'teden';
+
+        const slovenskiMeseci = ['JAN', 'FEB', 'MAR', 'APR', 'MAJ', 'JUN', 'JUL', 'AVG', 'SEP', 'OKT', 'NOV', 'DEC'];
+        const slovenskiDneviKratki = ['P', 'T', 'S', 'Č', 'P', 'S', 'N'];
+
+        function dodajDanPrekoGesla() {
+            let vnos = prompt("Vnesite kratico dneva, ki jo želite prikazati (pon, tor, sre, čet, pet, sob, ned):");
+            if (!vnos) return;
+            let geslo = vnos.trim().toLowerCase();
+
+            if (konfiguracijaDnevov[geslo]) {
+                let imeDneva = konfiguracijaDnevov[geslo].ime;
+                if (!prikazaniDnevi.includes(imeDneva)) {
+                    prikazaniDnevi.push(imeDneva);
+                    prikazaniDnevi.sort((a, b) => {
+                        let konfA = Object.values(konfiguracijaDnevov).find(d => d.ime === a);
+                        let konfB = Object.values(konfiguracijaDnevov).find(d => d.ime === b);
+                        return konfA.indeks - konfB.indeks;
+                    });
+                    if (!bazaUcencev[imeDneva]) {
+                        bazaUcencev[imeDneva] = [];
+                    }
+                    osveziSeznamDnevov();
+                    shraniPodatke();
+                } else {
+                    alert("Ta dan je že prikazan!");
+                }
+            } else {
+                alert("Napačna kratica! Uporabite: pon, tor, sre, čet, pet, sob ali ned.");
+            }
+        }
+
+        function odstraniDan(imeDneva) {
+            if (confirm(`Ali res želite umakniti dan ${imeDneva} s seznama ur?`)) {
+                prikazaniDnevi = prikazaniDnevi.filter(dan => dan !== imeDneva);
+                osveziSeznamDnevov();
+                shraniPodatke();
+            }
+        }
+
+        function osveziSeznamDnevov() {
+            let trenutniDanTdna = koledarDatum.getDay();
+            let razlikaDoPonedeljka = koledarDatum.getDate() - trenutniDanTdna + (trenutniDanTdna === 0 ? -6 : 1);
+            let ponedeljek = new Date(koledarDatum.getFullYear(), koledarDatum.getMonth(), razlikaDoPonedeljka);
+
+            let izpis = '';
+
+            for (let i = 0; i < 7; i++) {
+                let trenutniDan = new Date(ponedeljek);
+                trenutniDan.setDate(ponedeljek.getDate() + i);
+                
+                let dan = trenutniDan.getDate();
+                let mesec = trenutniDan.getMonth() + 1;
+                let polniDatumTekst = `${dan}. ${mesec}.`;
+                
+                let konf = Object.values(konfiguracijaDnevov).find(d => d.indeks === i);
+                let imeDneva = konf.ime;
+
+                if (prikazaniDnevi.includes(imeDneva)) {
+                    let jeIzbran = jeIstiDatum(trenutniDan, koledarDatum);
+                    let dodatniStil = jeIzbran ? 'background-color: #2c3e50; border: 2px solid #f1c40f;' : '';
+
+                    izpis += `
+                    <div class="element-ovoj">
+                        <div class="element-ozadje-izbris">Brišem...</div>
+                        <button class="btn-meni dinamicni-izbris-element" style="${dodatniStil} margin: 0; width: 100%; padding: 12px 15px;" data-tip="dan" data-kljuc="${imeDneva}" onclick="izvediKlikDneva(event, '${imeDneva}', '${polniDatumTekst}', ${trenutniDan.getTime()})">
+                            <div style="width: 100%;">
+                                <span style="font-weight: bold;">${konf.kratica} ${dan}. ${mesec}.</span>
+                            </div>
+                        </button>
+                    </div>`;
+                }
+            }
+
+            document.getElementById('seznam-dnevov-izpis').innerHTML = izpis;
+            aktivirajSledilnikeZdrsa();
+        }
+        function izvediKlikDneva(event, imeDneva, polniDatumTekst, timestamp) {
+            let el = event.currentTarget;
+            if (el.style.transform && el.style.transform !== 'translateX(0px)') {
+                return;
+            }
+            izberiDan(imeDneva, polniDatumTekst, timestamp);
+        }
+
+        function izvediKlikUcenca(event, dan, indeks) {
+            let el = event.currentTarget;
+            if (el.style.transform && el.style.transform !== 'translateX(0px)') {
+                return;
+            }
+            prikaziProfilUcenca(dan, indeks);
+        }
+
+        function aktivirajSledilnikeZdrsa() {
+            let elementi = document.querySelectorAll('.dinamicni-izbris-element');
+            elementi.forEach(element => {
+                let startX = 0;
+                let trenutniX = 0;
+                const mejaZaIzbris = -70;
+
+                function obZacetku(e) {
+                    startX = e.touches ? e.touches[0].clientX : e.clientX;
+                    element.classList.add('v-zdrsu');
+                }
+
+                function obPremiku(e) {
+                    let x = e.touches ? e.touches[0].clientX : e.clientX;
+                    trenutniX = x - startX;
+                    if (trenutniX > 0) trenutniX = 0;
+                    if (trenutniX < -120) trenutniX = -120;
+                    element.style.transform = `translateX(${trenutniX}px)`;
+                }
+
+                function obKoncu() {
+                    element.classList.remove('v-zdrsu');
+                    if (trenutniX < mejaZaIzbris) {
+                        element.style.transform = 'translateX(-100%)';
+                        setTimeout(() => {
+                            let tip = element.getAttribute('data-tip');
+                            let kljuc = element.getAttribute('data-kljuc');
+                            let dan = element.getAttribute('data-dan');
+                            let indeks = parseInt(element.getAttribute('data-indeks'));
+                            
+                            if (confirm('Zbrišem dokončno?')) {
+                                if (tip === 'dan') {
+                                    prikazaniDnevi = prikazaniDnevi.filter(dan => dan !== kljuc);
+                                    osveziSeznamDnevov();
+                                    shraniPodatke();
+                                } else if (tip === 'ucenec') {
+                                    bazaUcencev[dan].splice(indeks, 1);
+                                    osveziSeznamUcencev();
+                                    shraniPodatke();
+                                }
+                            } else {
+                                element.style.transform = 'translateX(0px)';
+                                trenutniX = 0;
+                            }
+                        }, 150);
+                    } else {
+                        element.style.transform = 'translateX(0px)';
+                        trenutniX = 0;
+                    }
+                }
+
+                element.addEventListener('touchstart', obZacetku, { passive: true });
+                element.addEventListener('touchmove', obPremiku, { passive: true });
+                element.addEventListener('touchend', obKoncu);
+
+                element.addEventListener('mousedown', (e) => {
+                    obZacetku(e);
+                    function naPremikMiske(me) { obPremiku(me); }
+                    function naKonecMiske() {
+                        obKoncu();
+                        window.removeEventListener('mousemove', naPremikMiske);
+                        window.removeEventListener('mouseup', naKonecMiske);
+                    }
+                    window.addEventListener('mousemove', naPremikMiske);
+                    window.addEventListener('mouseup', naKonecMiske);
+                });
+            });
+        }
+
+        function osveziKoledar() {
+            let glave = document.querySelectorAll('.koledar-naslov-prikaz');
+            let mreze = document.querySelectorAll('.koledar-mreza-prikaz');
+            let danes = new Date();
+
+            let polnoLeto = koledarDatum.getFullYear();
+            let kratkoLeto = String(polnoLeto).slice(-2);
+
+            let tekstGlave = '';
+            if (koledarPogled === 'leto') {
+                tekstGlave = kratkoLeto + ' ▾';
+            } else {
+                tekstGlave = slovenskiMeseci[koledarDatum.getMonth()] + ' ' + kratkoLeto + ' ▾';
+            }
+
+            glave.forEach(glava => glava.innerText = tekstGlave);
+
+            mreze.forEach(mreza => {
+                mreza.innerHTML = '';
+                if (koledarPogled === 'teden') {
+                    mreza.className = 'koledar-mreza mreza-7 koledar-mreza-prikaz';
+                    slovenskiDneviKratki.forEach(d => mreza.innerHTML += `<div class="koledar-dan-ime">${d}</div>`);
+                    
+                    let trenutniDanTdna = koledarDatum.getDay();
+                    let razlikaDoPonedeljka = koledarDatum.getDate() - trenutniDanTdna + (trenutniDanTdna === 0 ? -6 : 1);
+                    let ponedeljek = new Date(koledarDatum.getFullYear(), koledarDatum.getMonth(), razlikaDoPonedeljka);
+
+                    for (let i = 0; i < 7; i++) {
+                        let d = new Date(ponedeljek);
+                        d.setDate(ponedeljek.getDate() + i);
+                        let klasi = 'koledar-celica';
+                        if (jeIstiDatum(d, danes)) klasi += ' trenutni-dan';
+                        if (jeIstiDatum(d, koledarDatum)) klasi += ' izbran-dan';
+                        mreza.innerHTML += `<div class="${klasi}" onclick="klikniDanKoledarja(${d.getTime()})">${d.getDate()}</div>`;
+                    }
+                } 
+                else if (koledarPogled === 'mesec') {
+                    mreza.className = 'koledar-mreza mreza-7 koledar-mreza-prikaz';
+                    slovenskiDneviKratki.forEach(d => mreza.innerHTML += `<div class="koledar-dan-ime">${d}</div>`);
+                    
+                    let leto = koledarDatum.getFullYear();
+                    let mesec = koledarDatum.getMonth();
+                    let prviDan = new Date(leto, mesec, 1);
+                    let zadnjiDan = new Date(leto, mesec + 1, 0);
+                    
+                    let startIndeks = prviDan.getDay() - 1;
+                    if (startIndeks < 0) startIndeks = 6;
+                    
+                    let prejsnjiMesecZadnji = new Date(leto, mesec, 0).getDate();
+                    for (let i = startIndeks - 1; i >= 0; i--) {
+                        mreza.innerHTML += `<div class="koledar-celica izven-meseca">${prejsnjiMesecZadnji - i}</div>`;
+                    }
+                    
+                    for (let i = 1; i <= zadnjiDan.getDate(); i++) {
+                        let d = new Date(leto, mesec, i);
+                        let klasi = 'koledar-celica';
+                        if (jeIstiDatum(d, danes)) klasi += ' trenutni-dan';
+                        if (jeIstiDatum(d, koledarDatum)) klasi += ' izbran-dan';
+                        mreza.innerHTML += `<div class="${klasi}" onclick="klikniDanKoledarja(${d.getTime()})">${i}</div>`;
+                    }
+                } 
+                else if (koledarPogled === 'leto') {
+                    mreza.className = 'koledar-mreza mreza-3 koledar-mreza-prikaz';
+                    slovenskiMeseci.forEach((m, indeks) => {
+                        let klasi = 'koledar-mesec-celica';
+                        if (indeks === danes.getMonth() && koledarDatum.getFullYear() === danes.getFullYear()) klasi += ' trenutni-mesec';
+                        mreza.innerHTML += `<div class="${klasi}" onclick="klikniMesecKoledarja(${indeks})">${m}</div>`;
+                    });
+                }
+            });
+
+            osveziSeznamDnevov();
+        }
+
+        function preklopiPogledKoledarja() {
+            if (koledarPogled === 'teden') koledarPogled = 'mesec';
+            else if (koledarPogled === 'mesec') koledarPogled = 'leto';
+            else koledarPogled = 'teden';
+            osveziKoledar();
+        }
+
+        function klikniDanKoledarja(timestamp) {
+            koledarDatum = new Date(timestamp);
+            let danVTednu = koledarDatum.getDay();
+            let nasIndeks = danVTednu === 0 ? 6 : danVTednu - 1;
+
+            let konf = Object.values(konfiguracijaDnevov).find(d => d.indeks === nasIndeks);
+            let imeDneva = konf.ime;
+
+            osveziKoledar();
+            
+            let dan = koledarDatum.getDate();
+            let mesec = koledarDatum.getMonth() + 1;
+            izberiDan(imeDneva, `${dan}. ${mesec}.`, timestamp);
+        }
+
+        function klikniMesecKoledarja(mIndeks) {
+            koledarDatum.setMonth(mIndeks);
+            koledarPogled = 'mesec';
+            osveziKoledar();
+        }
+
+        function navigirajKoledar(smer) {
+            if (koledarPogled === 'teden') {
+                koledarDatum.setDate(koledarDatum.getDate() + (smer * 7));
+            } else if (koledarPogled === 'mesec' || koledarPogled === 'leto') {
+                let iskaniDan = koledarDatum.getDay();
+                let zaporedje = Math.ceil(koledarDatum.getDate() / 7);
+                
+                if (koledarPogled === 'mesec') {
+                    koledarDatum.setMonth(koledarDatum.getMonth() + smer);
+                } else {
+                    koledarDatum.setFullYear(koledarDatum.getFullYear() + smer);
+                }
+                
+                let novMesec = koledarDatum.getMonth();
+                koledarDatum.setDate(1);
+                
+                while (koledarDatum.getDay() !== iskaniDan) {
+                    koledarDatum.setDate(koledarDatum.getDate() + 1);
+                }
+                
+                koledarDatum.setDate(koledarDatum.getDate() + (zaporedje - 1) * 7);
+                
+                // Varnostni popravek, če ima nov mesec manj tednov
+                if (koledarDatum.getMonth() !== novMesec) {
+                    koledarDatum.setDate(koledarDatum.getDate() - 7);
+                }
+            }
+            osveziKoledar();
+        }
+
+        function skociNaAktualniTeden() {
+            koledarDatum = new Date();
+            koledarPogled = 'teden';
+            osveziKoledar();
+            prikaziZaslon('zaslon-dnevi');
+        }
+
+        function skociNaAktualniDan() {
+            koledarDatum = new Date();
+            koledarPogled = 'teden';
+            osveziKoledar();
+            
+            let danVTednu = koledarDatum.getDay();
+            let nasIndeks = danVTednu === 0 ? 6 : danVTednu - 1;
+            let konf = Object.values(konfiguracijaDnevov).find(d => d.indeks === nasIndeks);
+            let imeDneva = konf.ime;
+            
+            let dan = koledarDatum.getDate();
+            let mesec = koledarDatum.getMonth() + 1;
+            izberiDan(imeDneva, `${dan}. ${mesec}.`, koledarDatum.getTime());
+        }
+
+        
+
+        function jeIstiDatum(d1, d2) {
+            return d1.getDate() === d2.getDate() && d1.getMonth() === d2.getMonth() && d1.getFullYear() === d2.getFullYear();
+        }
+
+        function posodobiUro() {
+            let danes = new Date();
+            let ure = String(danes.getHours()).padStart(2, '0');
+            let minute = String(danes.getMinutes()).padStart(2, '0');
+            document.querySelectorAll('.prikaz-ure').forEach(el => el.innerText = ure + ':' + minute);
+            
+            let dneviSlo = ['NED', 'PON', 'TOR', 'SRE', 'ČET', 'PET', 'SOB'];
+            let dan = danes.getDate();
+            let mesec = danes.getMonth() + 1;
+            let imeDneva = dneviSlo[danes.getDay()];
+            let datumTekst = `${imeDneva} ${dan}.${mesec}.`;
+            document.querySelectorAll('.prikaz-datuma').forEach(el => el.innerText = datumTekst);
+        }
+
+        let zgodovinaZaslonov = ['zaslon-dnevi'];
+
+        function prikaziZaslon(id) {
+            if (zgodovinaZaslonov[zgodovinaZaslonov.length - 1] !== id) {
+                zgodovinaZaslonov.push(id);
+            }
+            
+            document.querySelectorAll('.zaslon').forEach(z => z.classList.remove('aktiven'));
+            document.getElementById(id).classList.add('aktiven');
+            
+            posodobiGumbNazaj(id);
+        }
+
+        function posodobiGumbNazaj(aktivenZaslon) {
+            let btnNazaj = document.getElementById('ikona-nazaj');
+            if(btnNazaj) {
+                // 1. Najprej očistimo status 'aktivna' na vseh ikonah v nogi
+                document.querySelectorAll('.ikona-noga').forEach(i => {
+                    if(i.id !== 'ikona-nazaj') i.classList.remove('aktivna');
+                });
+
+                // 2. Preverimo in prilagodimo trenutni zaslon
+                if (aktivenZaslon === 'zaslon-dnevi') {
+                    btnNazaj.classList.add('neaktivna');
+                    zgodovinaZaslonov = ['zaslon-dnevi']; 
+                } else {
+                    btnNazaj.classList.remove('neaktivna');
+                    
+                    // 3. Centralizirano preverjanje za osvetlitev prave ikone
+                    if (aktivenZaslon === 'zaslon-kontakti') {
+                        document.getElementById('ikona-kontakti').classList.add('aktivna');
+                    }
+                    if (aktivenZaslon === 'zaslon-izdaj-racune') {
+                        document.getElementById('ikona-racuni').classList.add('aktivna');
+                    }
+                    if (aktivenZaslon === 'zaslon-nastavitve') {
+                        document.getElementById('ikona-nastavitve').classList.add('aktivna');
+                    }
+                }
+            }
+        }
+
+        function pojdiNazaj() {
+            if (zgodovinaZaslonov.length > 1) {
+                zgodovinaZaslonov.pop(); 
+                let prejsnji = zgodovinaZaslonov[zgodovinaZaslonov.length - 1];
+                
+                if (prejsnji === 'zaslon-dnevi') osveziKoledar();
+                if (prejsnji === 'zaslon-ucenci') osveziSeznamUcencev();
+                
+                document.querySelectorAll('.zaslon').forEach(z => z.classList.remove('aktiven'));
+                document.getElementById(prejsnji).classList.add('aktiven');
+                posodobiGumbNazaj(prejsnji);
+            }
+        }
+        
+        function odpriZaslonMeni(id, idIkone) {
+            prikaziZaslon(id);
+        }
+
+        function izberiDan(dan, datumTekst, timestamp) {
+            izbraniDan = dan;
+            if (timestamp) {
+                koledarDatum = new Date(timestamp); 
+            }
+            // Izbrisana je vrstica, ki je spreminjala stari naslov-dneva
+            osveziSeznamUcencev();
+            prikaziZaslon('zaslon-ucenci');
+        }
+
+        function osveziSeznamUcencev() {
+            let izpis = '';
+            let ucenecList = [];
+            
+            if (prikazaniDnevi.includes(izbraniDan)) {
+                let bUcenci = bazaUcencev[izbraniDan] || [];
+                bUcenci.forEach((u, idx) => {
+                    ucenecList.push({ ucenec: u, originalIndeks: idx, izvorniDan: izbraniDan });
+                });
+            }
+
+            if (ucenecList.length === 0) {
+                izpis = '<div style="text-align:center; padding: 20px; color: #7f8c8d;">Za ta dan ni vpisanih učencev.</div>';
+            } else {
+                ucenecList.forEach((item) => {
+                    let ucenec = item.ucenec;
+                    let prikazanTermin = ucenec.termin;
+
+                    izpis += `
+                    <div class="element-ovoj">
+                        <div class="element-ozadje-izbris">Brišem...</div>
+                        <button class="btn-meni dinamicni-izbris-element" style="margin: 0; width: 100%; padding: 12px 15px;" data-tip="ucenec" data-dan="${item.izvorniDan}" data-indeks="${item.originalIndeks}" onclick="izvediKlikUcenca(event, '${item.izvorniDan}', ${item.originalIndeks})">
+                            <div style="width: 100%;">
+                                <span class="termin-znacka" onclick="urediTerminIzSeznama(event, '${item.izvorniDan}', ${item.originalIndeks})">${prikazanTermin}</span>
+                                <strong>${ucenec.ime}</strong>
+                            </div>
+                        </button>
+                    </div>`;
+                });
+            }
+            
+            document.getElementById('seznam-ucencev-izpis').innerHTML = izpis;
+            aktivirajSledilnikeZdrsa();
+        }
+
+        function preveriInPrikaziPrekrivanje() {
+            let opozoriloEl = document.getElementById('opozorilo-prekrivanje');
+            let dan = izbraniDan;
+            let indeksTrenutnega = bazaUcencev[dan].findIndex(u => u.id === trenutniUcenec.id);
+            
+            if (indeksTrenutnega === -1 || indeksTrenutnega === bazaUcencev[dan].length - 1) {
+                if(opozoriloEl) opozoriloEl.style.display = 'none';
+                return;
+            }
+
+            let naslednjiUcenec = bazaUcencev[dan][indeksTrenutnega + 1];
+            
+            let deliTrenutni = trenutniUcenec.termin.split(':');
+            let zacetekTrenutniMinut = parseInt(deliTrenutni[0], 10) * 60 + parseInt(deliTrenutni[1], 10);
+            let konecTrenutniMinut = zacetekTrenutniMinut + trenutniUcenec.minute;
+
+            let deliNaslednji = naslednjiUcenec.termin.split(':');
+            let zacetekNaslednjiMinut = parseInt(deliNaslednji[0], 10) * 60 + parseInt(deliNaslednji[1], 10);
+
+            if (konecTrenutniMinut > zacetekNaslednjiMinut) {
+                if(opozoriloEl) opozoriloEl.style.display = 'block';
+            } else {
+                if(opozoriloEl) opozoriloEl.style.display = 'none';
+            }
+        }
+
+        function prikaziProfilUcenca(dan, indeks) {
+            trenutniUcenec = bazaUcencev[dan][indeks];
+            
+            document.getElementById('podatki-ime').innerText = trenutniUcenec.ime;
+            document.getElementById('podatki-termin').innerText = trenutniUcenec.termin;
+            document.getElementById('podatki-predvideno').innerText = trenutniUcenec.predvideno;
+            document.getElementById('podatki-izvedeno').innerText = trenutniUcenec.izvedeno;
+            document.getElementById('okence-izpis').innerText = trenutniUcenec.minute + " min";
+            document.getElementById('vnos-cene-ure').value = trenutniUcenec.cenaUre || 20;
+            
+            document.getElementById('minute-gumbi').style.display = 'none';
+            
+            preveriInPrikaziPrekrivanje();
+            
+            prikaziZaslon('zaslon-podatki');
+        }
+
+        function dodajUcenca() {
+            let ime = prompt("Vnesite ime in priimek novega učenca:");
+            if (!ime) return;
+
+            if (!bazaUcencev[izbraniDan]) bazaUcencev[izbraniDan] = [];
+
+            let ura = 13, minute = 0;
+            let zadnji = bazaUcencev[izbraniDan].length > 0 ? bazaUcencev[izbraniDan][bazaUcencev[izbraniDan].length - 1] : null;
+            
+            if (zadnji && zadnji.termin) {
+                let deli = zadnji.termin.split(':');
+                ura = parseInt(deli[0], 10);
+                minute = parseInt(deli[1], 10) + zadnji.minute;
+                if (minute >= 60) { 
+                    ura += Math.floor(minute / 60); 
+                    minute = minute % 60; 
+                }
+            }
+
+            let predlaganTermin = "";
+            if (ura >= 24) {
+                predlaganTermin = "08:00";
+            } else {
+                let strUre = String(ura).padStart(2, '0');
+                let strMin = String(minute).padStart(2, '0');
+                predlaganTermin = `${strUre}:${strMin}`;
+            }
+
+            let vnesenaUra = prompt("Vnesite čas termina (HH:MM):", predlaganTermin);
+            if (!vnesenaUra) return;
+
+            if (!preveriFormatUre(vnesenaUra)) {
+                alert("Napačen format ure! Vnesite uro v obliki HH:MM (od 00:00 do 23:59).");
+                return;
+            }
+
+            let formatiranTermin = vnesenaUra.trim();
+            if (formatiranTermin.length === 4 && formatiranTermin.indexOf(':') === 1) {
+                 formatiranTermin = "0" + formatiranTermin;
+            }
+
+            let noviZacetekDeli = formatiranTermin.split(':');
+            let noviZacetekMinut = parseInt(noviZacetekDeli[0], 10) * 60 + parseInt(noviZacetekDeli[1], 10);
+            let noviKonecMinut = noviZacetekMinut + 30; 
+
+            let prekrivanje = false;
+            for (let i = 0; i < bazaUcencev[izbraniDan].length; i++) {
+                let obstojeci = bazaUcencev[izbraniDan][i];
+                let obstojeciDeli = obstojeci.termin.split(':');
+                let obstojeciZacetekMinut = parseInt(obstojeciDeli[0], 10) * 60 + parseInt(obstojeciDeli[1], 10);
+                let obstojeciKonecMinut = obstojeciZacetekMinut + obstojeci.minute;
+
+                if (noviZacetekMinut < obstojeciKonecMinut && noviKonecMinut > obstojeciZacetekMinut) {
+                    prekrivanje = true;
+                    break;
+                }
+            }
+
+            if (prekrivanje) {
+                alert("Vpis ni mogoč. Ure se prekrivajo.");
+                return;
+            }
+
+            bazaUcencev[izbraniDan].push({
+                id: Date.now(),
+                ime: ime,
+                predvideno: 4,
+                izvedeno: 0,
+                minute: 30,
+                termin: formatiranTermin,
+                cenaUre: 20
+            });
+
+            bazaUcencev[izbraniDan].sort((a, b) => {
+                if (a.termin < b.termin) return -1;
+                if (a.termin > b.termin) return 1;
+                return 0;
+            });
+
+            osveziSeznamUcencev();
+            shraniPodatke();
+        }
+
+        function preveriFormatUre(vnos) {
+            let regex = /^([01]?[0-9]|2[0-3]):[0-5][0-9]$/;
+            return regex.test(vnos.trim());
+        }
+
+        function urediTerminIzProfila() {
+            let novTermin = prompt("Vnesite nov čas (HH:MM):", trenutniUcenec.termin);
+            if (novTermin) {
+                if (preveriFormatUre(novTermin)) {
+                    let formatiranTermin = novTermin.trim();
+                    if (formatiranTermin.length === 4 && formatiranTermin.indexOf(':') === 1) {
+                         formatiranTermin = "0" + formatiranTermin;
+                    }
+
+                    let dan = izbraniDan;
+                    
+                    let kopija = JSON.parse(JSON.stringify(bazaUcencev[dan]));
+                    kopija.forEach(u => {
+                        let d = u.termin.split(':');
+                        u.origMin = parseInt(d[0], 10) * 60 + parseInt(d[1], 10);
+                    });
+                    
+                    let ucenecVKopiji = kopija.find(u => u.id === trenutniUcenec.id);
+                    
+                    let vnosDeli = formatiranTermin.split(':');
+                    let vnosStartMinut = parseInt(vnosDeli[0], 10) * 60 + parseInt(vnosDeli[1], 10);
+                    if (vnosStartMinut + ucenecVKopiji.minute > 1440) {
+                        alert("Vnos ni mogoč. Prišli ste do ure 23:59.");
+                        return;
+                    }
+                    
+                    ucenecVKopiji.termin = formatiranTermin;
+                    
+                    kopija.sort((a, b) => {
+                        let minA = parseInt(a.termin.split(':')[0], 10) * 60 + parseInt(a.termin.split(':')[1], 10);
+                        let minB = parseInt(b.termin.split(':')[0], 10) * 60 + parseInt(b.termin.split(':')[1], 10);
+                        if (minA !== minB) return minA - minB;
+                        return a.origMin - b.origMin;
+                    });
+                    
+                    let anchorIndex = kopija.findIndex(u => u.id === trenutniUcenec.id);
+                    let prviZamik = 0;
+                    let napakaMeje = false;
+                    
+                    for (let i = anchorIndex - 1; i >= 0; i--) {
+                        let next = kopija[i + 1];
+                        let curr = kopija[i];
+                        
+                        let nextStart = parseInt(next.termin.split(':')[0], 10) * 60 + parseInt(next.termin.split(':')[1], 10);
+                        let currStart = parseInt(curr.termin.split(':')[0], 10) * 60 + parseInt(curr.termin.split(':')[1], 10);
+                        let currKonec = currStart + curr.minute;
+                        
+                        if (currKonec > nextStart) {
+                            let zamik = currKonec - nextStart;
+                            if (prviZamik === 0) prviZamik = zamik;
+                            
+                            let noviStart = currStart - zamik;
+                            if (noviStart < 0) {
+                                napakaMeje = true; break;
+                            }
+                            
+                            let h = Math.floor(noviStart / 60);
+                            let m = noviStart % 60;
+                            curr.termin = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+                        }
+                    }
+                    
+                    for (let i = anchorIndex + 1; i < kopija.length; i++) {
+                        let prev = kopija[i - 1];
+                        let curr = kopija[i];
+                        
+                        let prevStart = parseInt(prev.termin.split(':')[0], 10) * 60 + parseInt(prev.termin.split(':')[1], 10);
+                        let prevKonec = prevStart + prev.minute;
+                        let currStart = parseInt(curr.termin.split(':')[0], 10) * 60 + parseInt(curr.termin.split(':')[1], 10);
+                        
+                        if (currStart < prevKonec) {
+                            let zamik = prevKonec - currStart;
+                            if (prviZamik === 0) prviZamik = zamik;
+                            
+                            let noviStart = currStart + zamik;
+                            if (noviStart + curr.minute > 1440) {
+                                napakaMeje = true; break;
+                            }
+                            
+                            let h = Math.floor(noviStart / 60);
+                            let m = noviStart % 60;
+                            curr.termin = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+                        }
+                    }
+                    
+                    if (napakaMeje) {
+                        alert("Premik ni mogoč. Presegli ste skrajno mejo dneva (00:00 ali 23:59).");
+                        return;
+                    }
+                    
+                    if (prviZamik > 0) {
+                        if (!confirm(`Urnik se bo zaradi prekrivanja zamaknil za ${prviZamik} minut. Ali nadaljujem?`)) {
+                            return;
+                        }
+                    }
+                    
+                    kopija.forEach(u => delete u.origMin);
+                    
+                    bazaUcencev[dan] = kopija;
+                    trenutniUcenec = bazaUcencev[dan].find(u => u.id === trenutniUcenec.id);
+                    
+                    document.getElementById('podatki-termin').innerText = trenutniUcenec.termin;
+                    shraniPodatke();
+                } else {
+                    alert("Napačen format ure! Vnesite uro v obliki HH:MM (od 00:00 do 23:59).");
+                }
+            }
+        }
+
+        function urediTerminIzSeznama(event, dan, indeks) {
+            event.stopPropagation();
+            let ucenec = bazaUcencev[dan][indeks];
+            let zacetnaUra = ucenec.termin;
+            
+            let novTermin = prompt("Vnesite nov čas (HH:MM):", zacetnaUra);
+            if (novTermin) {
+                if (preveriFormatUre(novTermin)) {
+                    let formatiranTermin = novTermin.trim();
+                    if (formatiranTermin.length === 4 && formatiranTermin.indexOf(':') === 1) {
+                         formatiranTermin = "0" + formatiranTermin;
+                    }
+
+                    let kopija = JSON.parse(JSON.stringify(bazaUcencev[dan]));
+                    kopija.forEach(u => {
+                        let d = u.termin.split(':');
+                        u.origMin = parseInt(d[0], 10) * 60 + parseInt(d[1], 10);
+                    });
+                    
+                    let ucenecVKopiji = kopija.find(u => u.id === ucenec.id);
+                    
+                    let vnosDeli = formatiranTermin.split(':');
+                    let vnosStartMinut = parseInt(vnosDeli[0], 10) * 60 + parseInt(vnosDeli[1], 10);
+                    if (vnosStartMinut + ucenecVKopiji.minute > 1440) {
+                        alert("Vnos ni mogoč. Prišli ste do ure 23:59.");
+                        return;
+                    }
+                    
+                    ucenecVKopiji.termin = formatiranTermin;
+                    
+                    kopija.sort((a, b) => {
+                        let minA = parseInt(a.termin.split(':')[0], 10) * 60 + parseInt(a.termin.split(':')[1], 10);
+                        let minB = parseInt(b.termin.split(':')[0], 10) * 60 + parseInt(b.termin.split(':')[1], 10);
+                        if (minA !== minB) return minA - minB;
+                        return a.origMin - b.origMin;
+                    });
+                    
+                    let anchorIndex = kopija.findIndex(u => u.id === ucenec.id);
+                    let prviZamik = 0;
+                    let napakaMeje = false;
+                    
+                    for (let i = anchorIndex - 1; i >= 0; i--) {
+                        let next = kopija[i + 1];
+                        let curr = kopija[i];
+                        
+                        let nextStart = parseInt(next.termin.split(':')[0], 10) * 60 + parseInt(next.termin.split(':')[1], 10);
+                        let currStart = parseInt(curr.termin.split(':')[0], 10) * 60 + parseInt(curr.termin.split(':')[1], 10);
+                        let currKonec = currStart + curr.minute;
+                        
+                        if (currKonec > nextStart) {
+                            let zamik = currKonec - nextStart;
+                            if (prviZamik === 0) prviZamik = zamik;
+                            
+                            let noviStart = currStart - zamik;
+                            if (noviStart < 0) {
+                                napakaMeje = true; break;
+                            }
+                            
+                            let h = Math.floor(noviStart / 60);
+                            let m = noviStart % 60;
+                            curr.termin = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+                        }
+                    }
+                    
+                    for (let i = anchorIndex + 1; i < kopija.length; i++) {
+                        let prev = kopija[i - 1];
+                        let curr = kopija[i];
+                        
+                        let prevStart = parseInt(prev.termin.split(':')[0], 10) * 60 + parseInt(prev.termin.split(':')[1], 10);
+                        let prevKonec = prevStart + prev.minute;
+                        let currStart = parseInt(curr.termin.split(':')[0], 10) * 60 + parseInt(curr.termin.split(':')[1], 10);
+                        
+                        if (currStart < prevKonec) {
+                            let zamik = prevKonec - currStart;
+                            if (prviZamik === 0) prviZamik = zamik;
+                            
+                            let noviStart = currStart + zamik;
+                            if (noviStart + curr.minute > 1440) {
+                                napakaMeje = true; break;
+                            }
+                            
+                            let h = Math.floor(noviStart / 60);
+                            let m = noviStart % 60;
+                            curr.termin = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+                        }
+                    }
+                    
+                    if (napakaMeje) {
+                        alert("Premik ni mogoč. Presegli ste skrajno mejo dneva (00:00 ali 23:59).");
+                        return;
+                    }
+                    
+                    if (prviZamik > 0) {
+                        if (!confirm(`Urnik se bo zaradi prekrivanja zamaknil za ${prviZamik} minut. Ali nadaljujem?`)) {
+                            return;
+                        }
+                    }
+                    
+                    kopija.forEach(u => delete u.origMin);
+                    
+                    bazaUcencev[dan] = kopija;
+                    
+                    shraniPodatke();
+                    osveziSeznamUcencev();
+                } else {
+                    alert("Napačen format ure! Vnesite uro v obliki HH:MM (od 00:00 do 23:59).");
+                }
+            }
+        }
+
+        function zabeleziUro(uspeh) {
+            if (uspeh) {
+                trenutniUcenec.izvedeno++;
+                alert("Ura zabeležena!");
+            } else {
+                trenutniUcenec.izvedeno = Math.max(0, trenutniUcenec.izvedeno - 1);
+                alert("Ura odšteta / označena kot neizvedena.");
+            }
+            document.getElementById('podatki-izvedeno').innerText = trenutniUcenec.izvedeno;
+            shraniPodatke();
+        }
+
+        function prikaziGumbaZaMinute() {
+            let gumbi = document.getElementById('minute-gumbi');
+            gumbi.style.display = gumbi.style.display === 'flex' ? 'none' : 'flex';
+        }
+
+        function prilagodiMinute(sprememba) {
+            let noveMinute = Math.max(5, trenutniUcenec.minute + sprememba); 
+            
+            let deliTrenutni = trenutniUcenec.termin.split(':');
+            let zacetekTrenutniMinut = parseInt(deliTrenutni[0], 10) * 60 + parseInt(deliTrenutni[1], 10);
+            
+            if (zacetekTrenutniMinut + noveMinute > 1440) { 
+                alert("Opozorilo: Trajanje ure bi preseglo polnoč. Vnos ni mogoč.");
+                return;
+            }
+
+            trenutniUcenec.minute = noveMinute;
+            document.getElementById('okence-izpis').innerText = trenutniUcenec.minute + " min";
+            
+            preveriInPrikaziPrekrivanje();
+            shraniPodatke();
+        }
+
+        function generirajPodatkeRacuna() {
+            let cena = parseFloat(document.getElementById('vnos-cene-ure').value) || 20;
+            trenutniUcenec.cenaUre = cena;
+            let skupaj = trenutniUcenec.izvedeno * cena;
+            
+            let vsebina = `
+                <h3 style="text-align:center;">RAČUN / SPECIFIKACIJA</h3>
+                <hr>
+                <p><strong>Učenec:</strong> ${trenutniUcenec.ime}</p>
+                <p><strong>Dolžina ure:</strong> ${trenutniUcenec.minute} min</p>
+                <p><strong>Izvedene ure:</strong> ${trenutniUcenec.izvedeno}</p>
+                <p><strong>Cena na uro:</strong> ${cena} €</p>
+                <hr>
+                <p style="font-size: 16px; text-align:right;"><strong>SKUPAJ: ${skupaj} €</strong></p>
+            `;
+            document.getElementById('vsebina-pdf-racuna').innerHTML = vsebina;
+            prikaziZaslon('zaslon-racun');
+            shraniPodatke();
+        }
+
+        // ZAGON STRANI IN NALAGANJE PODATKOV
+        naloziPodatke();
+        posodobiUro();
+        setInterval(posodobiUro, 30000);
+        osveziKoledar();
+        // PRISILNI IZBRIS STAREGA UPRAVITELJA (URGENT CACHE CLEAR)
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.getRegistrations().then(function(registrations) {
+                for(let registration of registrations) {
+                    registration.unregister();
+                }
+            });
+        }
+    </script>
+</body>
+</html>
