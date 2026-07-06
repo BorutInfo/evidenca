@@ -693,10 +693,14 @@
             if (izbraniUcenci.length === 0) {
                 alert("Za urejanje najprej izberi (dolg pritisk gumba).");
             } else {
-                meniOdprt = !meniOdprt;
-                osveziSeznamUcencev();
-                
                 if (meniOdprt) {
+                    meniOdprt = false;
+                    izbraniUcenci = [];
+                    osveziSeznamUcencev();
+                } else {
+                    meniOdprt = true;
+                    osveziSeznamUcencev();
+                    
                     setTimeout(() => {
                         let meniElement = document.querySelector('.sistemski-meni-ovoj');
                         if (meniElement) {
