@@ -67,11 +67,6 @@
 
         .izpis-prestavitve { display: none; padding: 10px; background: #fff3e0; border: 1px solid #ffe0b2; border-radius: 8px; text-align: center; color: #e67e22; font-weight: bold; margin: 15px 0; font-size: 15px; }
         
-        .element-ovoj { position: relative; overflow: hidden; margin: 10px 0; border-radius: 8px; background-color: #e74c3c; }
-        .element-ozadje-izbris { position: absolute; top: 0; right: 0; width: 100%; height: 100%; display: flex; align-items: center; justify-content: flex-end; padding-right: 20px; color: white; font-weight: bold; box-sizing: border-box; font-size: 16px; }
-        .dinamicni-izbris-element { position: relative; transition: transform 0.2s ease-out; z-index: 2; margin: 0 !important; }
-        .dinamicni-izbris-element.v-zdrsu { transition: none; }
-
         /* NOVA NOGA IN IKONE */
         .noga-ovoj { width: 100%; background-color: #2c3e50; display: flex; justify-content: center; z-index: 100; flex-shrink: 0; }
         .noga-fiksna { width: 100%; max-width: 400px; display: flex; justify-content: space-around; align-items: center; padding: 8px 0; padding-bottom: max(8px, env(safe-area-inset-bottom)); }
@@ -425,104 +420,17 @@
                     let dodatniStil = jeIzbran ? 'background-color: #2c3e50; border: 2px solid #f1c40f;' : '';
 
                     izpis += `
-                    <div class="element-ovoj">
-                        <div class="element-ozadje-izbris">Brišem...</div>
-                        <button class="btn-meni dinamicni-izbris-element" style="${dodatniStil} margin: 0; width: 100%; padding: 12px 15px;" data-tip="dan" data-kljuc="${imeDneva}" onclick="izvediKlikDneva(event, '${imeDneva}', '${polniDatumTekst}', ${trenutniDan.getTime()})">
-                            <div style="width: 100%;">
-                                <span style="font-weight: bold;">${konf.kratica} ${dan}. ${mesec}.</span>
-                            </div>
-                        </button>
-                    </div>`;
+                    <button class="btn-meni" style="${dodatniStil} width: 100%; padding: 12px 15px;" onclick="izberiDan('${imeDneva}', '${polniDatumTekst}', ${trenutniDan.getTime()})">
+                        <div style="width: 100%;">
+                            <span style="font-weight: bold;">${konf.kratica} ${dan}. ${mesec}.</span>
+                        </div>
+                    </button>`;
                 }
             }
 
             document.getElementById('seznam-dnevov-izpis').innerHTML = izpis;
-            aktivirajSledilnikeZdrsa();
         }
-        function izvediKlikDneva(event, imeDneva, polniDatumTekst, timestamp) {
-            let el = event.currentTarget;
-            if (el.style.transform && el.style.transform !== 'translateX(0px)') {
-                return;
-            }
-            izberiDan(imeDneva, polniDatumTekst, timestamp);
-        }
-
-        function izvediKlikUcenca(event, dan, indeks) {
-            let el = event.currentTarget;
-            if (el.style.transform && el.style.transform !== 'translateX(0px)') {
-                return;
-            }
-            prikaziProfilUcenca(dan, indeks);
-        }
-
-        function aktivirajSledilnikeZdrsa() {
-            let elementi = document.querySelectorAll('.dinamicni-izbris-element');
-            elementi.forEach(element => {
-                let startX = 0;
-                let trenutniX = 0;
-                const mejaZaIzbris = -70;
-
-                function obZacetku(e) {
-                    startX = e.touches ? e.touches[0].clientX : e.clientX;
-                    element.classList.add('v-zdrsu');
-                }
-
-                function obPremiku(e) {
-                    let x = e.touches ? e.touches[0].clientX : e.clientX;
-                    trenutniX = x - startX;
-                    if (trenutniX > 0) trenutniX = 0;
-                    if (trenutniX < -120) trenutniX = -120;
-                    element.style.transform = `translateX(${trenutniX}px)`;
-                }
-
-                function obKoncu() {
-                    element.classList.remove('v-zdrsu');
-                    if (trenutniX < mejaZaIzbris) {
-                        element.style.transform = 'translateX(-100%)';
-                        setTimeout(() => {
-                            let tip = element.getAttribute('data-tip');
-                            let kljuc = element.getAttribute('data-kljuc');
-                            let dan = element.getAttribute('data-dan');
-                            let indeks = parseInt(element.getAttribute('data-indeks'));
-                            
-                            if (confirm('Zbrišem dokončno?')) {
-                                if (tip === 'dan') {
-                                    prikazaniDnevi = prikazaniDnevi.filter(dan => dan !== kljuc);
-                                    osveziSeznamDnevov();
-                                    shraniPodatke();
-                                } else if (tip === 'ucenec') {
-                                    bazaUcencev[dan].splice(indeks, 1);
-                                    osveziSeznamUcencev();
-                                    shraniPodatke();
-                                }
-                            } else {
-                                element.style.transform = 'translateX(0px)';
-                                trenutniX = 0;
-                            }
-                        }, 150);
-                    } else {
-                        element.style.transform = 'translateX(0px)';
-                        trenutniX = 0;
-                    }
-                }
-
-                element.addEventListener('touchstart', obZacetku, { passive: true });
-                element.addEventListener('touchmove', obPremiku, { passive: true });
-                element.addEventListener('touchend', obKoncu);
-
-                element.addEventListener('mousedown', (e) => {
-                    obZacetku(e);
-                    function naPremikMiske(me) { obPremiku(me); }
-                    function naKonecMiske() {
-                        obKoncu();
-                        window.removeEventListener('mousemove', naPremikMiske);
-                        window.removeEventListener('mouseup', naKonecMiske);
-                    }
-                    window.addEventListener('mousemove', naPremikMiske);
-                    window.addEventListener('mouseup', naKonecMiske);
-                });
-            });
-        }
+        /* Funkcije drsanja (Swipe-to-delete) so odstranjene */
 
         function osveziKoledar() {
             let glave = document.querySelectorAll('.koledar-naslov-prikaz');
@@ -791,20 +699,16 @@
                     let prikazanTermin = ucenec.termin;
 
                     izpis += `
-                    <div class="element-ovoj">
-                        <div class="element-ozadje-izbris">Brišem...</div>
-                        <button class="btn-meni dinamicni-izbris-element" style="margin: 0; width: 100%; padding: 12px 15px;" data-tip="ucenec" data-dan="${item.izvorniDan}" data-indeks="${item.originalIndeks}" onclick="izvediKlikUcenca(event, '${item.izvorniDan}', ${item.originalIndeks})">
-                            <div style="width: 100%;">
-                                <span class="termin-znacka" onclick="urediTerminIzSeznama(event, '${item.izvorniDan}', ${item.originalIndeks})">${prikazanTermin}</span>
-                                <strong>${ucenec.ime}</strong>
-                            </div>
-                        </button>
-                    </div>`;
+                    <button class="btn-meni" style="width: 100%; padding: 12px 15px;" onclick="prikaziProfilUcenca('${item.izvorniDan}', ${item.originalIndeks})">
+                        <div style="width: 100%;">
+                            <span class="termin-znacka" onclick="urediTerminIzSeznama(event, '${item.izvorniDan}', ${item.originalIndeks})">${prikazanTermin}</span>
+                            <strong>${ucenec.ime}</strong>
+                        </div>
+                    </button>`;
                 });
             }
             
             document.getElementById('seznam-ucencev-izpis').innerHTML = izpis;
-            aktivirajSledilnikeZdrsa();
         }
 
         function preveriInPrikaziPrekrivanje() {
