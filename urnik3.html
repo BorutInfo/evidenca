@@ -700,13 +700,6 @@
                 } else {
                     meniOdprt = true;
                     osveziSeznamUcencev();
-                    
-                    setTimeout(() => {
-                        let meniElement = document.querySelector('.sistemski-meni-ovoj');
-                        if (meniElement) {
-                            meniElement.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-                        }
-                    }, 50);
                 }
             }
         }
@@ -756,15 +749,27 @@
                     if (indeks === indeksZadnjegaOznacenega && izbraniUcenci.length > 0 && meniOdprt) {
                         izpis += `
                         <div class="sistemski-meni-ovoj">
-                            <button class="btn-podmeni" onclick="alert('Kliknil si Premakni za x minut'); event.stopPropagation();">
-                                <span class="btn-podmeni-ikona"><span>🕒</span> Premakni za x minut</span>
+                            <button class="btn-podmeni" onclick="alert('Kliknil si Premakni za x h x min'); event.stopPropagation();">
+                                <span class="btn-podmeni-ikona"><span>🕒</span> Premakni za x h x min</span>
                             </button>
-                            <button class="btn-podmeni" onclick="alert('Kliknil si Pauziraj učenca'); event.stopPropagation();">
-                                <span class="btn-podmeni-ikona"><span>⏸️</span> Pauziraj učenca</span>
+                            <button class="btn-podmeni" onclick="alert('Kliknil si Premakni na dan v tednu'); event.stopPropagation();">
+                                <span class="btn-podmeni-ikona"><span>📅</span> Premakni na dan v tednu</span>
+                            </button>`;
+                            
+                        if (izbraniUcenci.length === 1) {
+                            izpis += `
+                            <button class="btn-podmeni" onclick="alert('Kliknil si Preimenuj'); event.stopPropagation();">
+                                <span class="btn-podmeni-ikona"><span>✏️</span> Preimenuj</span>
+                            </button>`;
+                        }
+                        
+                        izpis += `
+                            <button class="btn-podmeni" onclick="alert('Kliknil si Pavziraj učenca-e'); event.stopPropagation();">
+                                <span class="btn-podmeni-ikona"><span>⏸️</span> Pavziraj učenca-e</span>
                                 <span style="color: #bdc3c7;">❯</span>
                             </button>
-                            <button class="btn-podmeni" onclick="alert('Kliknil si Zbriši učenca'); event.stopPropagation();">
-                                <span class="btn-podmeni-ikona"><span>🗑️</span> Zbriši učenca</span>
+                            <button class="btn-podmeni" onclick="alert('Kliknil si Zbriši učenca-e'); event.stopPropagation();">
+                                <span class="btn-podmeni-ikona"><span>🗑️</span> Zbriši učenca-e</span>
                                 <span style="color: #bdc3c7;">❯</span>
                             </button>
                         </div>`;
@@ -773,6 +778,15 @@
             }
             
             document.getElementById('seznam-ucencev-izpis').innerHTML = izpis;
+
+            if (meniOdprt) {
+                setTimeout(() => {
+                    let meniElement = document.querySelector('.sistemski-meni-ovoj');
+                    if (meniElement) {
+                        meniElement.scrollIntoView({ behavior: 'smooth', block: 'end' });
+                    }
+                }, 50);
+            }
         }
 
         function preveriInPrikaziPrekrivanje() {
