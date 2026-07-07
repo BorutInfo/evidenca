@@ -523,30 +523,38 @@
 
         let koledarZlozen = false;
         let koledarDotikZacetekY = 0;
+        let potezaNaKoledarju = false;
 
         document.addEventListener('touchstart', function(e) {
             let sekcija = e.target.closest('.koledar-sekcija');
             if (sekcija) {
                 koledarDotikZacetekY = e.touches[0].clientY;
+                potezaNaKoledarju = true;
+            } else {
+                potezaNaKoledarju = false;
             }
-        }, {passive: true});
+        }, { passive: false });
 
         document.addEventListener('touchmove', function(e) {
-            if (koledarDotikZacetekY === 0) return;
-            let sekcija = e.target.closest('.koledar-sekcija');
-            if (!sekcija) return;
+            if (!potezaNaKoledarju || koledarDotikZacetekY === 0) return;
             
             let trenutniY = e.touches[0].clientY;
             let razlikaY = trenutniY - koledarDotikZacetekY;
             
+            if (razlikaY > 5 && e.cancelable) {
+                e.preventDefault(); 
+            }
+            
             if (razlikaY > 40 && !koledarZlozen) {
                 koledarDotikZacetekY = 0;
+                potezaNaKoledarju = false; 
                 upravljajZlaganjeKoledarja(true);
             }
-        }, {passive: true});
+        }, { passive: false });
 
         document.addEventListener('touchend', function(e) {
             koledarDotikZacetekY = 0;
+            potezaNaKoledarju = false;
         });
 
         function upravljajZlaganjeKoledarja(zlozi) {
