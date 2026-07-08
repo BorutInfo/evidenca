@@ -54,9 +54,7 @@
         .btn-spon { padding: 10px 20px; font-size: 16px; border: none; background: #2c3e50; color: white; border-radius: 5px; cursor: pointer; }
 
         .koledar-sekcija { background: #fdfdfd; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px; box-shadow: inset 0 1px 3px rgba(0,0,0,0.02); }
-        .koledar-sekcija.zlozen .koledar-mreza-prikaz { display: none; }
         .koledar-glava { display: flex; justify-content: space-between; align-items: center; font-weight: bold; margin-top: 12px; color: #2c3e50; }
-        .koledar-sekcija.zlozen .koledar-glava { margin-top: 0; }
         .koledar-naslov-gumb { cursor: pointer; font-size: 15px; background: #e2e8f0; padding: 5px 14px; border-radius: 20px; display: inline-block; font-weight: bold; }
         .koledar-naslov-gumb:hover { background: #cbd5e0; }
         .koledar-nav-btn { background: none; border: none; font-size: 14px; cursor: pointer; color: #3498db; padding: 5px 10px; font-weight: bold; }
@@ -521,78 +519,7 @@
             osveziSeznamDnevov();
         }
 
-        let koledarZlozen = false;
-        let koledarDotikZacetekY = 0;
-        let potezaNaKoledarju = false;
-
-        document.addEventListener('touchstart', function(e) {
-            let sekcija = e.target.closest('.koledar-sekcija');
-            if (sekcija) {
-                koledarDotikZacetekY = e.touches[0].clientY;
-                potezaNaKoledarju = true;
-            } else {
-                potezaNaKoledarju = false;
-            }
-        }, { passive: false });
-
-        document.addEventListener('touchmove', function(e) {
-            if (!potezaNaKoledarju || koledarDotikZacetekY === 0) return;
-            
-            let trenutniY = e.touches[0].clientY;
-            let razlikaY = trenutniY - koledarDotikZacetekY;
-            
-            if (razlikaY > 5 && e.cancelable) {
-                e.preventDefault(); 
-            }
-            
-            if (razlikaY > 40 && !koledarZlozen) {
-                koledarDotikZacetekY = 0;
-                potezaNaKoledarju = false; 
-                upravljajZlaganjeKoledarja(true);
-            }
-        }, { passive: false });
-
-        document.addEventListener('touchend', function(e) {
-            koledarDotikZacetekY = 0;
-            potezaNaKoledarju = false;
-        });
-
-        function upravljajZlaganjeKoledarja(zlozi) {
-            if (koledarZlozen === zlozi) return;
-            
-            let aktivniZaslon = document.querySelector('.zaslon.aktiven');
-            let scrollKontejner = aktivniZaslon ? aktivniZaslon.querySelector('.vsebina-scroll') : null;
-            
-            let staraVisina = 0;
-            if (aktivniZaslon) {
-                let koledarOvoj = aktivniZaslon.querySelector('.koledar-ovoj-spodaj');
-                if (koledarOvoj) staraVisina = koledarOvoj.offsetHeight;
-            }
-            
-            koledarZlozen = zlozi;
-            document.querySelectorAll('.koledar-sekcija').forEach(el => {
-                if (zlozen) {
-                    el.classList.add('zlozen');
-                } else {
-                    el.classList.remove('zlozen');
-                }
-            });
-            
-            if (aktivniZaslon && scrollKontejner) {
-                let koledarOvoj = aktivniZaslon.querySelector('.koledar-ovoj-spodaj');
-                if (koledarOvoj) {
-                    let novaVisina = koledarOvoj.offsetHeight;
-                    let razlika = staraVisina - novaVisina;
-                    scrollKontejner.scrollTop -= razlika;
-                }
-            }
-        }
-
         function preklopiPogledKoledarja() {
-            if (koledarZlozen) {
-                upravljajZlaganjeKoledarja(false);
-                return;
-            }
             if (koledarPogled === 'teden') koledarPogled = 'mesec';
             else if (koledarPogled === 'mesec') koledarPogled = 'leto';
             else koledarPogled = 'teden';
