@@ -105,6 +105,9 @@
             </div>
 
             <div class="vsebina-scroll">
+                <div style="text-align: right; margin-bottom: 5px;">
+                    <span onclick="klikNaUrediDnevi()" style="color: #3498db; font-size: 16px; font-weight: bold; cursor: pointer; padding: 3px 0px 10px 15px; display: inline-block; position: relative; z-index: 10;">Uredi</span>
+                </div>
                 <div id="seznam-dnevov-izpis"></div>
                 <button class="btn-akcija btn-potrdi" style="width: 100%; margin-top: 15px; display: block; font-size: 16px;" onclick="dodajDanPrekoGesla()">+ Dodaj dan</button>
             </div>
@@ -369,6 +372,13 @@
         let dolgPritiskIzveden = false;
         let meniOdprt = false;
 
+        let izbraniDnevi = [];
+        let meniDneviOdprt = false;
+        let casovnikPritiskaDan = null;
+        let zacetniXDan = 0;
+        let zacetniYDan = 0;
+        let dolgPritiskIzvedenDan = false;
+
         let koledarDatum = new Date(); 
         let koledarPogled = 'teden';
 
@@ -416,6 +426,23 @@
             let ponedeljek = new Date(koledarDatum.getFullYear(), koledarDatum.getMonth(), razlikaDoPonedeljka);
 
             let izpis = '';
+            
+            let prikazaniElementi = [];
+            for (let i = 0; i < 7; i++) {
+                let konf = Object.values(konfiguracijaDnevov).find(d => d.indeks === i);
+                if (prikazaniDnevi.includes(konf.ime)) {
+                    prikazaniElementi.push(konf.ime);
+                }
+            }
+            
+            let indeksZadnjegaOznacenega = -1;
+            prikazaniElementi.forEach((ime, indeks) => {
+                if (izbraniDnevi.includes(ime)) {
+                    indeksZadnjegaOznacenega = indeks;
+                }
+            });
+
+            let trenutenIndeksPrikazanega = 0;
 
             for (let i = 0; i < 7; i++) {
                 let trenutniDan = new Date(ponedeljek);
@@ -431,17 +458,122 @@
                 if (prikazaniDnevi.includes(imeDneva)) {
                     let jeIzbran = jeIstiDatum(trenutniDan, koledarDatum);
                     let dodatniStil = jeIzbran ? 'background-color: #2c3e50; border: 2px solid #f1c40f;' : '';
+                    let izbranRazred = izbraniDnevi.includes(imeDneva) ? 'izbran-ucenec' : '';
 
                     izpis += `
-                    <button class="btn-meni" style="${dodatniStil} width: 100%; padding: 12px 15px;" onclick="izberiDan('${imeDneva}', '${polniDatumTekst}', ${trenutniDan.getTime()})">
-                        <div style="width: 100%;">
+                    <button class="btn-meni ${izbranRazred}" style="${dodatniStil} width: 100%; padding: 12px 15px;" 
+                        ontouchstart="zacniDolgPritiskDan(event, '${imeDneva}')" 
+                        ontouchend="koncajDolgPritiskDan(event)" 
+                        ontouchmove="premakniDolgPritiskDan(event)" 
+                        onmousedown="zacniDolgPritiskDan(event, '${imeDneva}')" 
+                        onmouseup="koncajDolgPritiskDan(event)" 
+                        onmousemove="premakniDolgPritiskDan(event)" 
+                        onmouseleave="koncajDolgPritiskDan(event)"
+                        onclick="upravljajKlikDneva(event, '${imeDneva}', '${polniDatumTekst}', ${trenutniDan.getTime()})">
+                        <div style="width: 100%; pointer-events: none;">
                             <span style="font-weight: bold;">${konf.kratica} ${dan}. ${mesec}.</span>
                         </div>
                     </button>`;
+
+                    if (trenutenIndeksPrikazanega === indeksZadnjegaOznacenega && izbraniDnevi.length > 0 && meniDneviOdprt) {
+                        izpis += `
+                        <div class="sistemski-meni-ovoj">
+                            <button class="btn-podmeni" onclick="alert('Kliknil si Dupliciraj'); event.stopPropagation();">
+                                <span class="btn-podmeni-ikona"><span>📋</span> Dupliciraj</span>
+                            </button>
+                            <button class="btn-podmeni" onclick="alert('Kliknil si Zamenjaj dneva'); event.stopPropagation();">
+                                <span class="btn-podmeni-ikona"><span>🔄</span> Zamenjaj dneva</span>
+                            </button>
+                            <button class="btn-podmeni" onclick="alert('Kliknil si Zbriši'); event.stopPropagation();">
+                                <span class="btn-podmeni-ikona"><span>🗑️</span> Zbriši</span>
+                            </button>
+                        </div>`;
+                    }
+
+                    trenutenIndeksPrikazanega++;
                 }
             }
 
             document.getElementById('seznam-dnevov-izpis').innerHTML = izpis;
+
+            if (meniDneviOdprt) {
+                setTimeout(() => {
+                    let meniElement = document.getElementById('seznam-dnevov-izpis').querySelector('.sistemski-meni-ovoj');
+                    if (meniElement) {
+                        meniElement.scrollIntoView({ behavior: 'smooth', block: 'end' });
+                    }
+                }, 50);
+            }
+        }
+
+        function klikNaUrediDnevi() {
+            if (izbraniDnevi.length === 0) {
+                alert("Za urejanje najprej izberi (dolg pritisk gumba).");
+            } else {
+                if (meniDneviOdprt) {
+                    meniDneviOdprt = false;
+                    izbraniDnevi = [];
+                    osveziSeznamDnevov();
+                } else {
+                    meniDneviOdprt = true;
+                    osveziSeznamDnevov();
+                }
+            }
+        }
+
+        function zacniDolgPritiskDan(event, imeDneva) {
+            let dotik = event.touches ? event.touches[0] : event;
+            zacetniXDan = dotik.clientX;
+            zacetniYDan = dotik.clientY;
+            dolgPritiskIzvedenDan = false; 
+            
+            casovnikPritiskaDan = setTimeout(() => {
+                dolgPritiskIzvedenDan = true; 
+                if ('vibrate' in navigator) navigator.vibrate(50);
+                
+                if (!izbraniDnevi.includes(imeDneva)) {
+                    izbraniDnevi.push(imeDneva);
+                }
+                osveziSeznamDnevov();
+            }, 650);
+        }
+
+        function premakniDolgPritiskDan(event) {
+            if (!casovnikPritiskaDan) return;
+            
+            let dotik = event.touches ? event.touches[0] : event;
+            let premikX = Math.abs(dotik.clientX - zacetniXDan);
+            let premikY = Math.abs(dotik.clientY - zacetniYDan);
+            
+            if (premikX > 10 || premikY > 10) {
+                clearTimeout(casovnikPritiskaDan);
+                casovnikPritiskaDan = null;
+            }
+        }
+
+        function koncajDolgPritiskDan(event) {
+            if (casovnikPritiskaDan) {
+                clearTimeout(casovnikPritiskaDan);
+                casovnikPritiskaDan = null;
+            }
+        }
+
+        function upravljajKlikDneva(event, imeDneva, datumTekst, timestamp) {
+            if (dolgPritiskIzvedenDan) {
+                dolgPritiskIzvedenDan = false; 
+                return;
+            }
+            
+            let pozicija = izbraniDnevi.indexOf(imeDneva);
+            if (pozicija !== -1) {
+                izbraniDnevi.splice(pozicija, 1);
+                if (izbraniDnevi.length === 0) {
+                    meniDneviOdprt = false;
+                }
+                osveziSeznamDnevov();
+            } else {
+                izberiDan(imeDneva, datumTekst, timestamp);
+            }
         }
         /* Funkcije drsanja (Swipe-to-delete) so odstranjene */
 
