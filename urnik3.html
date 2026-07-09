@@ -55,20 +55,25 @@
 
         .koledar-sekcija { background: #fdfdfd; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px; box-shadow: inset 0 1px 3px rgba(0,0,0,0.02); }
         .koledar-glava { display: flex; justify-content: space-between; align-items: center; font-weight: bold; margin-top: 12px; color: #2c3e50; }
-        .koledar-naslov-gumb { cursor: pointer; font-size: 15px; background: #e2e8f0; padding: 5px 14px; border-radius: 20px; display: inline-block; font-weight: bold; }
+        .koledar-naslov-gumb { cursor: pointer; font-size: 19px; background: #e2e8f0; padding: 5px 4px; border-radius: 20px; display: inline-block; font-weight: bold; white-space: nowrap; }
         .koledar-naslov-gumb:hover { background: #cbd5e0; }
-        .koledar-nav-btn { background: none; border: none; font-size: 14px; cursor: pointer; color: #3498db; padding: 5px 10px; font-weight: bold; }
+        .koledar-nav-btn { background: none; border: none; font-size: 18px; cursor: pointer; color: #3498db; padding: 5px 4px; font-weight: bold; }
         .koledar-mreza { display: grid; gap: 4px; text-align: center; }
         .mreza-7 { grid-template-columns: repeat(7, 1fr); }
+        
+        /* Barvanje vikendov (sobota in nedelja) strogo samo za 7-dnevno mrežo */
+        .mreza-7 .koledar-dan-ime:nth-child(7n-1), .mreza-7 .koledar-dan-ime:nth-child(7n),
+        .mreza-7 .koledar-celica:nth-child(7n-1), .mreza-7 .koledar-celica:nth-child(7n) { color: #95a5a6; }
+        
         .mreza-3 { grid-template-columns: repeat(3, 1fr); }
-        .koledar-dan-ime { font-size: 11px; color: #a0aec0; font-weight: bold; margin-bottom: 2px; }
-        .koledar-celica { padding: 6px 0; font-size: 13px; cursor: pointer; border-radius: 6px; color: #4a5568; }
+        .koledar-dan-ime { font-size: 19px; color: #a0aec0; font-weight: bold; margin-bottom: 0px; }
+        .koledar-celica { padding: 2px 0; font-size: 19px; cursor: pointer; border-radius: 6px; color: #4a5568; line-height: 1.1; }
         .koledar-celica:hover { background-color: #edf2f7; }
-        .koledar-celica.trenutni-dan { background-color: #ebdcb0; color: #2c3e50; font-weight: bold; border: 1px solid #d6c494; }
-        .koledar-celica.izbran-dan { background-color: #3498db; color: white; font-weight: bold; }
-        .koledar-celica.izven-meseca { color: #cbd5e0; cursor: default; }
+        .koledar-celica.trenutni-dan { background-color: #ebdcb0; color: #2c3e50 !important; font-weight: bold; border: 1px solid #d6c494; }
+        .koledar-celica.izbran-dan { background-color: #3498db; color: white !important; font-weight: bold; }
+        .koledar-celica.izven-meseca { color: #cbd5e0 !important; cursor: default; }
         .koledar-celica.izven-meseca:hover { background: none; }
-        .koledar-mesec-celica { padding: 12px 0; font-size: 13px; cursor: pointer; border-radius: 6px; color: #2c3e50; font-weight: bold; }
+        .koledar-mesec-celica { padding: 4px 0; font-size: 19px; cursor: pointer; border-radius: 6px; color: #2c3e50; font-weight: bold; line-height: 1.1; }
         .koledar-mesec-celica:hover { background-color: #edf2f7; }
         .koledar-mesec-celica.trenutni-mesec { background-color: #ebdcb0; border: 1px solid #d6c494; }
 
