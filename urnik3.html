@@ -166,7 +166,7 @@
             </div>
             
             <div class="vsebina-scroll">
-                <div class="podatek-vrstica">Termin uredbe: <input type="time" id="podatki-termin" onchange="urediTerminIzProfila()" style="font-size: 16px;"> <span style="font-size:12px; color:#7f8c8d;">(sistemski vnos)</span></div>
+                <div class="podatek-vrstica">Termin uredbe: <strong id="podatki-termin" style="cursor:pointer; color:#3498db;" onclick="urediTerminIzProfila()">13:00</strong> <span style="font-size:12px; color:#7f8c8d;">(klikni za spremembo)</span></div>
                 <div class="podatek-vrstica">Predvidenih ur v mesecu: <strong id="podatki-predvideno">4</strong></div>
                 <div class="podatek-vrstica">Izvedenih ur: <strong id="podatki-izvedeno">0</strong></div>
                 
@@ -873,7 +873,7 @@
                         onmouseleave="koncajDolgPritisk(event)"
                         onclick="upravljajKlikUcenca(event, '${item.izvorniDan}', ${item.originalIndeks}, ${ucenec.id})">
                         <div style="width: 100%; pointer-events: none;">
-                            <input type="time" class="termin-vnos" value="${prikazanTermin}" style="pointer-events: auto; margin-right: 10px;" onclick="event.stopPropagation()" onchange="urediTerminIzSeznama(event, '${item.izvorniDan}', ${item.originalIndeks})">
+                            <span class="termin-znacka" style="pointer-events: auto;" onclick="urediTerminIzSeznama(event, '${item.izvorniDan}', ${item.originalIndeks})">${prikazanTermin}</span>
                             <strong>${ucenec.ime}</strong>
                         </div>
                     </button>`;
@@ -948,7 +948,7 @@
         }
 
         function zacniDolgPritisk(event, idUcenca, dan, indeks) {
-            if (event.target.classList.contains('termin-vnos')) return; 
+            if (event.target.classList.contains('termin-znacka')) return; 
             
             let dotik = event.touches ? event.touches[0] : event;
             zacetniX = dotik.clientX;
@@ -987,7 +987,7 @@
         }
 
         function upravljajKlikUcenca(event, dan, indeks, idUcenca) {
-            if (event.target.classList.contains('termin-vnos')) return; 
+            if (event.target.classList.contains('termin-znacka')) return; 
             
             if (dolgPritiskIzveden) {
                 dolgPritiskIzveden = false; 
@@ -1010,7 +1010,7 @@
             trenutniUcenec = bazaUcencev[dan][indeks];
             
             document.getElementById('podatki-ime').innerText = trenutniUcenec.ime;
-            document.getElementById('podatki-termin').value = trenutniUcenec.termin;
+            document.getElementById('podatki-termin').innerText = trenutniUcenec.termin;
             document.getElementById('podatki-predvideno').innerText = trenutniUcenec.predvideno;
             document.getElementById('podatki-izvedeno').innerText = trenutniUcenec.izvedeno;
             document.getElementById('okence-izpis').innerText = trenutniUcenec.minute + " min";
@@ -1051,7 +1051,18 @@
                 predlaganTermin = `${strUre}:${strMin}`;
             }
 
-            let formatiranTermin = predlaganTermin;
+            let vnesenaUra = prompt("Vnesite čas termina (HH:MM):", predlaganTermin);
+            if (!vnesenaUra) return;
+
+            if (!preveriFormatUre(vnesenaUra)) {
+                alert("Napačen format ure! Vnesite uro v obliki HH:MM (od 00:00 do 23:59).");
+                return;
+            }
+
+            let formatiranTermin = vnesenaUra.trim();
+            if (formatiranTermin.length === 4 && formatiranTermin.indexOf(':') === 1) {
+                 formatiranTermin = "0" + formatiranTermin;
+            }
 
             let noviZacetekDeli = formatiranTermin.split(':');
             let noviZacetekMinut = parseInt(noviZacetekDeli[0], 10) * 60 + parseInt(noviZacetekDeli[1], 10);
@@ -1101,114 +1112,111 @@
         }
 
         function urediTerminIzProfila() {
-            let vnosnoPolje = document.getElementById('podatki-termin');
-            let novTermin = vnosnoPolje.value;
-            
-            if (!novTermin) {
-                vnosnoPolje.value = trenutniUcenec.termin;
-                return;
-            }
-
-            if (novTermin !== trenutniUcenec.termin) {
-                let formatiranTermin = novTermin;
-
-                let dan = izbraniDan;
-                
-                let kopija = JSON.parse(JSON.stringify(bazaUcencev[dan]));
-                kopija.forEach(u => {
-                    let d = u.termin.split(':');
-                    u.origMin = parseInt(d[0], 10) * 60 + parseInt(d[1], 10);
-                });
-                
-                let ucenecVKopiji = kopija.find(u => u.id === trenutniUcenec.id);
-                
-                let vnosDeli = formatiranTermin.split(':');
-                let vnosStartMinut = parseInt(vnosDeli[0], 10) * 60 + parseInt(vnosDeli[1], 10);
-                if (vnosStartMinut + ucenecVKopiji.minute > 1440) {
-                    alert("Vnos ni mogoč. Prišli ste do ure 23:59.");
-                    vnosnoPolje.value = trenutniUcenec.termin;
-                    return;
-                }
-                
-                ucenecVKopiji.termin = formatiranTermin;
-                
-                kopija.sort((a, b) => {
-                    let minA = parseInt(a.termin.split(':')[0], 10) * 60 + parseInt(a.termin.split(':')[1], 10);
-                    let minB = parseInt(b.termin.split(':')[0], 10) * 60 + parseInt(b.termin.split(':')[1], 10);
-                    if (minA !== minB) return minA - minB;
-                    return a.origMin - b.origMin;
-                });
-                
-                let anchorIndex = kopija.findIndex(u => u.id === trenutniUcenec.id);
-                let prviZamik = 0;
-                let napakaMeje = false;
-                
-                for (let i = anchorIndex - 1; i >= 0; i--) {
-                    let next = kopija[i + 1];
-                    let curr = kopija[i];
-                    
-                    let nextStart = parseInt(next.termin.split(':')[0], 10) * 60 + parseInt(next.termin.split(':')[1], 10);
-                    let currStart = parseInt(curr.termin.split(':')[0], 10) * 60 + parseInt(curr.termin.split(':')[1], 10);
-                    let currKonec = currStart + curr.minute;
-                    
-                    if (currKonec > nextStart) {
-                        let zamik = currKonec - nextStart;
-                        if (prviZamik === 0) prviZamik = zamik;
-                        
-                        let noviStart = currStart - zamik;
-                        if (noviStart < 0) {
-                            napakaMeje = true; break;
-                        }
-                        
-                        let h = Math.floor(noviStart / 60);
-                        let m = noviStart % 60;
-                        curr.termin = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+            let novTermin = prompt("Vnesite nov čas (HH:MM):", trenutniUcenec.termin);
+            if (novTermin) {
+                if (preveriFormatUre(novTermin)) {
+                    let formatiranTermin = novTermin.trim();
+                    if (formatiranTermin.length === 4 && formatiranTermin.indexOf(':') === 1) {
+                         formatiranTermin = "0" + formatiranTermin;
                     }
-                }
-                
-                for (let i = anchorIndex + 1; i < kopija.length; i++) {
-                    let prev = kopija[i - 1];
-                    let curr = kopija[i];
+
+                    let dan = izbraniDan;
                     
-                    let prevStart = parseInt(prev.termin.split(':')[0], 10) * 60 + parseInt(prev.termin.split(':')[1], 10);
-                    let prevKonec = prevStart + prev.minute;
-                    let currStart = parseInt(curr.termin.split(':')[0], 10) * 60 + parseInt(curr.termin.split(':')[1], 10);
+                    let kopija = JSON.parse(JSON.stringify(bazaUcencev[dan]));
+                    kopija.forEach(u => {
+                        let d = u.termin.split(':');
+                        u.origMin = parseInt(d[0], 10) * 60 + parseInt(d[1], 10);
+                    });
                     
-                        if (currStart < prevKonec) {
-                        let zamik = prevKonec - currStart;
-                        if (prviZamik === 0) prviZamik = zamik;
-                        
-                        let noviStart = currStart + zamik;
-                        if (noviStart + curr.minute > 1440) {
-                            napakaMeje = true; break;
-                        }
-                        
-                        let h = Math.floor(noviStart / 60);
-                        let m = noviStart % 60;
-                        curr.termin = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
-                    }
-                }
-                
-                if (napakaMeje) {
-                    alert("Premik ni mogoč. Presegli ste skrajno mejo dneva (00:00 ali 23:59).");
-                    vnosnoPolje.value = trenutniUcenec.termin;
-                    return;
-                }
-                
-                if (prviZamik > 0) {
-                    if (!confirm(`Urnik se bo zaradi prekrivanja zamaknil za ${prviZamik} minut. Ali nadaljujem?`)) {
-                        vnosnoPolje.value = trenutniUcenec.termin;
+                    let ucenecVKopiji = kopija.find(u => u.id === trenutniUcenec.id);
+                    
+                    let vnosDeli = formatiranTermin.split(':');
+                    let vnosStartMinut = parseInt(vnosDeli[0], 10) * 60 + parseInt(vnosDeli[1], 10);
+                    if (vnosStartMinut + ucenecVKopiji.minute > 1440) {
+                        alert("Vnos ni mogoč. Prišli ste do ure 23:59.");
                         return;
                     }
+                    
+                    ucenecVKopiji.termin = formatiranTermin;
+                    
+                    kopija.sort((a, b) => {
+                        let minA = parseInt(a.termin.split(':')[0], 10) * 60 + parseInt(a.termin.split(':')[1], 10);
+                        let minB = parseInt(b.termin.split(':')[0], 10) * 60 + parseInt(b.termin.split(':')[1], 10);
+                        if (minA !== minB) return minA - minB;
+                        return a.origMin - b.origMin;
+                    });
+                    
+                    let anchorIndex = kopija.findIndex(u => u.id === trenutniUcenec.id);
+                    let prviZamik = 0;
+                    let napakaMeje = false;
+                    
+                    for (let i = anchorIndex - 1; i >= 0; i--) {
+                        let next = kopija[i + 1];
+                        let curr = kopija[i];
+                        
+                        let nextStart = parseInt(next.termin.split(':')[0], 10) * 60 + parseInt(next.termin.split(':')[1], 10);
+                        let currStart = parseInt(curr.termin.split(':')[0], 10) * 60 + parseInt(curr.termin.split(':')[1], 10);
+                        let currKonec = currStart + curr.minute;
+                        
+                        if (currKonec > nextStart) {
+                            let zamik = currKonec - nextStart;
+                            if (prviZamik === 0) prviZamik = zamik;
+                            
+                            let noviStart = currStart - zamik;
+                            if (noviStart < 0) {
+                                napakaMeje = true; break;
+                            }
+                            
+                            let h = Math.floor(noviStart / 60);
+                            let m = noviStart % 60;
+                            curr.termin = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+                        }
+                    }
+                    
+                    for (let i = anchorIndex + 1; i < kopija.length; i++) {
+                        let prev = kopija[i - 1];
+                        let curr = kopija[i];
+                        
+                        let prevStart = parseInt(prev.termin.split(':')[0], 10) * 60 + parseInt(prev.termin.split(':')[1], 10);
+                        let prevKonec = prevStart + prev.minute;
+                        let currStart = parseInt(curr.termin.split(':')[0], 10) * 60 + parseInt(curr.termin.split(':')[1], 10);
+                        
+                        if (currStart < prevKonec) {
+                            let zamik = prevKonec - currStart;
+                            if (prviZamik === 0) prviZamik = zamik;
+                            
+                            let noviStart = currStart + zamik;
+                            if (noviStart + curr.minute > 1440) {
+                                napakaMeje = true; break;
+                            }
+                            
+                            let h = Math.floor(noviStart / 60);
+                            let m = noviStart % 60;
+                            curr.termin = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+                        }
+                    }
+                    
+                    if (napakaMeje) {
+                        alert("Premik ni mogoč. Presegli ste skrajno mejo dneva (00:00 ali 23:59).");
+                        return;
+                    }
+                    
+                    if (prviZamik > 0) {
+                        if (!confirm(`Urnik se bo zaradi prekrivanja zamaknil za ${prviZamik} minut. Ali nadaljujem?`)) {
+                            return;
+                        }
+                    }
+                    
+                    kopija.forEach(u => delete u.origMin);
+                    
+                    bazaUcencev[dan] = kopija;
+                    trenutniUcenec = bazaUcencev[dan].find(u => u.id === trenutniUcenec.id);
+                    
+                    document.getElementById('podatki-termin').innerText = trenutniUcenec.termin;
+                    shraniPodatke();
+                } else {
+                    alert("Napačen format ure! Vnesite uro v obliki HH:MM (od 00:00 do 23:59).");
                 }
-                
-                kopija.forEach(u => delete u.origMin);
-                
-                bazaUcencev[dan] = kopija;
-                trenutniUcenec = bazaUcencev[dan].find(u => u.id === trenutniUcenec.id);
-                
-                vnosnoPolje.value = trenutniUcenec.termin;
-                shraniPodatke();
             }
         }
 
@@ -1217,111 +1225,108 @@
             let ucenec = bazaUcencev[dan][indeks];
             let zacetnaUra = ucenec.termin;
             
-            let vnosnoPolje = event.target;
-            let novTermin = vnosnoPolje.value;
-            
-            if (!novTermin) {
-                vnosnoPolje.value = zacetnaUra;
-                return;
-            }
-            
-            if (novTermin !== zacetnaUra) {
-                let formatiranTermin = novTermin;
+            let novTermin = prompt("Vnesite nov čas (HH:MM):", zacetnaUra);
+            if (novTermin) {
+                if (preveriFormatUre(novTermin)) {
+                    let formatiranTermin = novTermin.trim();
+                    if (formatiranTermin.length === 4 && formatiranTermin.indexOf(':') === 1) {
+                         formatiranTermin = "0" + formatiranTermin;
+                    }
 
-                let kopija = JSON.parse(JSON.stringify(bazaUcencev[dan]));
-                kopija.forEach(u => {
-                    let d = u.termin.split(':');
-                    u.origMin = parseInt(d[0], 10) * 60 + parseInt(d[1], 10);
-                });
-                
-                let ucenecVKopiji = kopija.find(u => u.id === ucenec.id);
-                
-                let vnosDeli = formatiranTermin.split(':');
-                let vnosStartMinut = parseInt(vnosDeli[0], 10) * 60 + parseInt(vnosDeli[1], 10);
-                if (vnosStartMinut + ucenecVKopiji.minute > 1440) {
-                    alert("Vnos ni mogoč. Prišli ste do ure 23:59.");
-                    vnosnoPolje.value = zacetnaUra;
-                    return;
-                }
-                
-                ucenecVKopiji.termin = formatiranTermin;
-                
-                kopija.sort((a, b) => {
-                    let minA = parseInt(a.termin.split(':')[0], 10) * 60 + parseInt(a.termin.split(':')[1], 10);
-                    let minB = parseInt(b.termin.split(':')[0], 10) * 60 + parseInt(b.termin.split(':')[1], 10);
-                    if (minA !== minB) return minA - minB;
-                    return a.origMin - b.origMin;
-                });
-                
-                let anchorIndex = kopija.findIndex(u => u.id === ucenec.id);
-                let prviZamik = 0;
-                let napakaMeje = false;
-                
-                for (let i = anchorIndex - 1; i >= 0; i--) {
-                    let next = kopija[i + 1];
-                    let curr = kopija[i];
+                    let kopija = JSON.parse(JSON.stringify(bazaUcencev[dan]));
+                    kopija.forEach(u => {
+                        let d = u.termin.split(':');
+                        u.origMin = parseInt(d[0], 10) * 60 + parseInt(d[1], 10);
+                    });
                     
-                    let nextStart = parseInt(next.termin.split(':')[0], 10) * 60 + parseInt(next.termin.split(':')[1], 10);
-                    let currStart = parseInt(curr.termin.split(':')[0], 10) * 60 + parseInt(curr.termin.split(':')[1], 10);
-                    let currKonec = currStart + curr.minute;
+                    let ucenecVKopiji = kopija.find(u => u.id === ucenec.id);
                     
-                    if (currKonec > nextStart) {
-                        let zamik = currKonec - nextStart;
-                        if (prviZamik === 0) prviZamik = zamik;
-                        
-                        let noviStart = currStart - zamik;
-                        if (noviStart < 0) {
-                            napakaMeje = true; break;
-                        }
-                        
-                        let h = Math.floor(noviStart / 60);
-                        let m = noviStart % 60;
-                        curr.termin = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
-                    }
-                }
-                
-                for (let i = anchorIndex + 1; i < kopija.length; i++) {
-                    let prev = kopija[i - 1];
-                    let curr = kopija[i];
-                    
-                    let prevStart = parseInt(prev.termin.split(':')[0], 10) * 60 + parseInt(prev.termin.split(':')[1], 10);
-                    let prevKonec = prevStart + prev.minute;
-                    let currStart = parseInt(curr.termin.split(':')[0], 10) * 60 + parseInt(curr.termin.split(':')[1], 10);
-                    
-                    if (currStart < prevKonec) {
-                        let zamik = prevKonec - currStart;
-                        if (prviZamik === 0) prviZamik = zamik;
-                        
-                        let noviStart = currStart + zamik;
-                        if (noviStart + curr.minute > 1440) {
-                            napakaMeje = true; break;
-                        }
-                        
-                        let h = Math.floor(noviStart / 60);
-                        let m = noviStart % 60;
-                        curr.termin = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
-                    }
-                }
-                
-                if (napakaMeje) {
-                    alert("Premik ni mogoč. Presegli ste skrajno mejo dneva (00:00 ali 23:59).");
-                    vnosnoPolje.value = zacetnaUra;
-                    return;
-                }
-                
-                if (prviZamik > 0) {
-                    if (!confirm(`Urnik se bo zaradi prekrivanja zamaknil za ${prviZamik} minut. Ali nadaljujem?`)) {
-                        vnosnoPolje.value = zacetnaUra;
+                    let vnosDeli = formatiranTermin.split(':');
+                    let vnosStartMinut = parseInt(vnosDeli[0], 10) * 60 + parseInt(vnosDeli[1], 10);
+                    if (vnosStartMinut + ucenecVKopiji.minute > 1440) {
+                        alert("Vnos ni mogoč. Prišli ste do ure 23:59.");
                         return;
                     }
+                    
+                    ucenecVKopiji.termin = formatiranTermin;
+                    
+                    kopija.sort((a, b) => {
+                        let minA = parseInt(a.termin.split(':')[0], 10) * 60 + parseInt(a.termin.split(':')[1], 10);
+                        let minB = parseInt(b.termin.split(':')[0], 10) * 60 + parseInt(b.termin.split(':')[1], 10);
+                        if (minA !== minB) return minA - minB;
+                        return a.origMin - b.origMin;
+                    });
+                    
+                    let anchorIndex = kopija.findIndex(u => u.id === ucenec.id);
+                    let prviZamik = 0;
+                    let napakaMeje = false;
+                    
+                    for (let i = anchorIndex - 1; i >= 0; i--) {
+                        let next = kopija[i + 1];
+                        let curr = kopija[i];
+                        
+                        let nextStart = parseInt(next.termin.split(':')[0], 10) * 60 + parseInt(next.termin.split(':')[1], 10);
+                        let currStart = parseInt(curr.termin.split(':')[0], 10) * 60 + parseInt(curr.termin.split(':')[1], 10);
+                        let currKonec = currStart + curr.minute;
+                        
+                        if (currKonec > nextStart) {
+                            let zamik = currKonec - nextStart;
+                            if (prviZamik === 0) prviZamik = zamik;
+                            
+                            let noviStart = currStart - zamik;
+                            if (noviStart < 0) {
+                                napakaMeje = true; break;
+                            }
+                            
+                            let h = Math.floor(noviStart / 60);
+                            let m = noviStart % 60;
+                            curr.termin = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+                        }
+                    }
+                    
+                    for (let i = anchorIndex + 1; i < kopija.length; i++) {
+                        let prev = kopija[i - 1];
+                        let curr = kopija[i];
+                        
+                        let prevStart = parseInt(prev.termin.split(':')[0], 10) * 60 + parseInt(prev.termin.split(':')[1], 10);
+                        let prevKonec = prevStart + prev.minute;
+                        let currStart = parseInt(curr.termin.split(':')[0], 10) * 60 + parseInt(curr.termin.split(':')[1], 10);
+                        
+                        if (currStart < prevKonec) {
+                            let zamik = prevKonec - currStart;
+                            if (prviZamik === 0) prviZamik = zamik;
+                            
+                            let noviStart = currStart + zamik;
+                            if (noviStart + curr.minute > 1440) {
+                                napakaMeje = true; break;
+                            }
+                            
+                            let h = Math.floor(noviStart / 60);
+                            let m = noviStart % 60;
+                            curr.termin = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+                        }
+                    }
+                    
+                    if (napakaMeje) {
+                        alert("Premik ni mogoč. Presegli ste skrajno mejo dneva (00:00 ali 23:59).");
+                        return;
+                    }
+                    
+                    if (prviZamik > 0) {
+                        if (!confirm(`Urnik se bo zaradi prekrivanja zamaknil za ${prviZamik} minut. Ali nadaljujem?`)) {
+                            return;
+                        }
+                    }
+                    
+                    kopija.forEach(u => delete u.origMin);
+                    
+                    bazaUcencev[dan] = kopija;
+                    
+                    shraniPodatke();
+                    osveziSeznamUcencev();
+                } else {
+                    alert("Napačen format ure! Vnesite uro v obliki HH:MM (od 00:00 do 23:59).");
                 }
-                
-                kopija.forEach(u => delete u.origMin);
-                
-                bazaUcencev[dan] = kopija;
-                
-                shraniPodatke();
-                osveziSeznamUcencev();
             }
         }
 
