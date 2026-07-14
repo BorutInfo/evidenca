@@ -55,8 +55,9 @@
 
         .koledar-sekcija { }
         .koledar-glava { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; align-items: center; font-weight: bold; margin-top: 8px; color: #2c3e50; }
-        .koledar-nav-btn { background: none; border: none; font-size: 15px; cursor: pointer; color: #3498db; padding: 4px 0; font-weight: bold; text-align: center; }
-        .koledar-pogled-btn { border: none; background: #9accef; color: #3498db; font-size: 12px; font-weight: bold; padding: 6px 0; cursor: pointer; }
+        .koledar-nav-btn { background: none; border: none; font-size: 15px; cursor: pointer; color: #3498db; padding: 4px 0; font-weight: bold; text-align: center; border-radius: 6px; }
+        .koledar-danes-btn:active { background: #3498db; color: white; }
+        .koledar-pogled-btn { border: none; background: #9accef; color: white; font-size: 15px; font-weight: bold; padding: 6px 0; cursor: pointer; }
         .koledar-pogled-btn.zaobli-levo { border-radius: 14px 0 0 14px; }
         .koledar-pogled-btn.zaobli-desno { border-radius: 0 14px 14px 0; }
         .koledar-pogled-btn.aktiven { background: #3498db; color: white; }
@@ -138,11 +139,11 @@
                     <div id="koledar-mreza" class="koledar-mreza-prikaz"></div>
                     <div class="koledar-glava">
                         <button class="koledar-nav-btn" onclick="navigirajKoledar(-1)">◀</button>
-                        <button class="koledar-nav-btn" onclick="skociNaAktualniTeden()">T</button>
-                        <button class="koledar-pogled-btn zaobli-levo koledar-pogled-teden" onclick="nastaviPogledKoledarja('teden')">Teden</button>
-                        <button class="koledar-pogled-btn koledar-pogled-mesec" onclick="nastaviPogledKoledarja('mesec')">Mesec</button>
-                        <button class="koledar-pogled-btn zaobli-desno koledar-pogled-leto" onclick="nastaviPogledKoledarja('leto')">Leto</button>
-                        <button class="koledar-nav-btn" onclick="skociNaAktualniDan()">D</button>
+                        <button class="koledar-nav-btn koledar-danes-btn" onclick="skociNaAktualniTeden()">T</button>
+                        <button class="koledar-pogled-btn zaobli-levo koledar-pogled-teden" onclick="nastaviPogledKoledarja('teden')">Ted</button>
+                        <button class="koledar-pogled-btn koledar-pogled-mesec" onclick="nastaviPogledKoledarja('mesec')">Mes</button>
+                        <button class="koledar-pogled-btn zaobli-desno koledar-pogled-leto" onclick="nastaviPogledKoledarja('leto')">Let</button>
+                        <button class="koledar-nav-btn koledar-danes-btn" onclick="skociNaAktualniDan()">D</button>
                         <button class="koledar-nav-btn" onclick="navigirajKoledar(1)">▶</button>
                     </div>
                 </div>
@@ -170,11 +171,11 @@
                     <div class="koledar-mreza-prikaz"></div>
                     <div class="koledar-glava">
                         <button class="koledar-nav-btn" onclick="navigirajKoledar(-1)">◀</button>
-                        <button class="koledar-nav-btn" onclick="skociNaAktualniTeden()">T</button>
-                        <button class="koledar-pogled-btn zaobli-levo koledar-pogled-teden" onclick="nastaviPogledKoledarja('"teden"')">Teden</button>
-                        <button class="koledar-pogled-btn koledar-pogled-mesec" onclick="nastaviPogledKoledarja('"mesec"')">Mesec</button>
-                        <button class="koledar-pogled-btn zaobli-desno koledar-pogled-leto" onclick="nastaviPogledKoledarja('"leto"')">Leto</button>
-                        <button class="koledar-nav-btn" onclick="skociNaAktualniDan()">D</button>
+                        <button class="koledar-nav-btn koledar-danes-btn" onclick="skociNaAktualniTeden()">T</button>
+                        <button class="koledar-pogled-btn zaobli-levo koledar-pogled-teden" onclick="nastaviPogledKoledarja('teden')">Ted</button>
+                        <button class="koledar-pogled-btn koledar-pogled-mesec" onclick="nastaviPogledKoledarja('mesec')">Mes</button>
+                        <button class="koledar-pogled-btn zaobli-desno koledar-pogled-leto" onclick="nastaviPogledKoledarja('leto')">Let</button>
+                        <button class="koledar-nav-btn koledar-danes-btn" onclick="skociNaAktualniDan()">D</button>
                         <button class="koledar-nav-btn" onclick="navigirajKoledar(1)">▶</button>
                     </div>
                 </div>
@@ -223,11 +224,11 @@
                     <div class="koledar-mreza-prikaz"></div>
                     <div class="koledar-glava">
                         <button class="koledar-nav-btn" onclick="navigirajKoledar(-1)">◀</button>
-                        <button class="koledar-nav-btn" onclick="skociNaAktualniTeden()">T</button>
-                        <button class="koledar-pogled-btn zaobli-levo koledar-pogled-teden" onclick="nastaviPogledKoledarja('"teden"')">Teden</button>
-                        <button class="koledar-pogled-btn koledar-pogled-mesec" onclick="nastaviPogledKoledarja('"mesec"')">Mesec</button>
-                        <button class="koledar-pogled-btn zaobli-desno koledar-pogled-leto" onclick="nastaviPogledKoledarja('"leto"')">Leto</button>
-                        <button class="koledar-nav-btn" onclick="skociNaAktualniDan()">D</button>
+                        <button class="koledar-nav-btn koledar-danes-btn" onclick="skociNaAktualniTeden()">T</button>
+                        <button class="koledar-pogled-btn zaobli-levo koledar-pogled-teden" onclick="nastaviPogledKoledarja('teden')">Ted</button>
+                        <button class="koledar-pogled-btn koledar-pogled-mesec" onclick="nastaviPogledKoledarja('mesec')">Mes</button>
+                        <button class="koledar-pogled-btn zaobli-desno koledar-pogled-leto" onclick="nastaviPogledKoledarja('leto')">Let</button>
+                        <button class="koledar-nav-btn koledar-danes-btn" onclick="skociNaAktualniDan()">D</button>
                         <button class="koledar-nav-btn" onclick="navigirajKoledar(1)">▶</button>
                     </div>
                 </div>
