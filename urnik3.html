@@ -54,12 +54,12 @@
         .btn-spon { padding: 10px 20px; font-size: 16px; border: none; background: #2c3e50; color: white; border-radius: 5px; cursor: pointer; }
 
         .koledar-sekcija { }
-        .koledar-glava { display: flex; justify-content: space-between; align-items: center; font-weight: bold; margin-top: 12px; color: #2c3e50; }
-        .koledar-naslov-gumb { cursor: pointer; font-size: 16px; background: #e2e8f0; padding: 6px 16px; border-radius: 20px; display: inline-block; font-weight: bold; }
-        .koledar-naslov-gumb:hover { background: #cbd5e0; }
-        .koledar-nav-btn { background: none; border: none; font-size: 16px; cursor: pointer; color: #3498db; padding: 8px 10px; font-weight: bold; }
-        .koledar-glava > button:first-child { margin-left: -10px; }
-        .koledar-glava > button:last-child { margin-right: -10px; }
+        .koledar-glava { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; align-items: center; font-weight: bold; margin-top: 8px; color: #2c3e50; }
+        .koledar-nav-btn { background: none; border: none; font-size: 15px; cursor: pointer; color: #3498db; padding: 4px 0; font-weight: bold; text-align: center; }
+        .koledar-pogled-btn { border: none; background: #9accef; color: #3498db; font-size: 12px; font-weight: bold; padding: 6px 0; cursor: pointer; }
+        .koledar-pogled-btn.zaobli-levo { border-radius: 14px 0 0 14px; }
+        .koledar-pogled-btn.zaobli-desno { border-radius: 0 14px 14px 0; }
+        .koledar-pogled-btn.aktiven { background: #3498db; color: white; }
         .koledar-mreza { display: grid; gap: 4px; text-align: center; }
         .mreza-7 { grid-template-columns: repeat(7, 1fr); }
         .mreza-3 { grid-template-columns: repeat(3, 1fr); }
@@ -67,6 +67,7 @@
         .koledar-dan-ime:nth-child(-n+5) { color: #4a5568; }
         .koledar-dan-ime:nth-child(n+6) { color: #7f8c8d; }
         .koledar-celica { padding: 8px 0; font-size: 15px; cursor: pointer; border-radius: 6px; color: #4a5568; }
+        .koledar-celica:nth-child(7n+6), .koledar-celica:nth-child(7n) { color: #7f8c8d; }
         .koledar-celica:hover { background-color: #edf2f7; }
         .koledar-celica.trenutni-dan { background-color: #ebdcb0; color: #2c3e50; font-weight: bold; border: 1px solid #d6c494; }
         .koledar-celica.izbran-dan { background-color: #3498db; color: white; font-weight: bold; }
@@ -138,7 +139,9 @@
                     <div class="koledar-glava">
                         <button class="koledar-nav-btn" onclick="navigirajKoledar(-1)">◀</button>
                         <button class="koledar-nav-btn" onclick="skociNaAktualniTeden()">T</button>
-                        <span id="koledar-naslov" class="koledar-naslov-gumb koledar-naslov-prikaz" onclick="preklopiPogledKoledarja()"></span>
+                        <button class="koledar-pogled-btn zaobli-levo koledar-pogled-teden" onclick="nastaviPogledKoledarja('teden')">Teden</button>
+                        <button class="koledar-pogled-btn koledar-pogled-mesec" onclick="nastaviPogledKoledarja('mesec')">Mesec</button>
+                        <button class="koledar-pogled-btn zaobli-desno koledar-pogled-leto" onclick="nastaviPogledKoledarja('leto')">Leto</button>
                         <button class="koledar-nav-btn" onclick="skociNaAktualniDan()">D</button>
                         <button class="koledar-nav-btn" onclick="navigirajKoledar(1)">▶</button>
                     </div>
@@ -168,7 +171,9 @@
                     <div class="koledar-glava">
                         <button class="koledar-nav-btn" onclick="navigirajKoledar(-1)">◀</button>
                         <button class="koledar-nav-btn" onclick="skociNaAktualniTeden()">T</button>
-                        <span class="koledar-naslov-gumb koledar-naslov-prikaz" onclick="preklopiPogledKoledarja()"></span>
+                        <button class="koledar-pogled-btn zaobli-levo koledar-pogled-teden" onclick="nastaviPogledKoledarja('"teden"')">Teden</button>
+                        <button class="koledar-pogled-btn koledar-pogled-mesec" onclick="nastaviPogledKoledarja('"mesec"')">Mesec</button>
+                        <button class="koledar-pogled-btn zaobli-desno koledar-pogled-leto" onclick="nastaviPogledKoledarja('"leto"')">Leto</button>
                         <button class="koledar-nav-btn" onclick="skociNaAktualniDan()">D</button>
                         <button class="koledar-nav-btn" onclick="navigirajKoledar(1)">▶</button>
                     </div>
@@ -219,7 +224,9 @@
                     <div class="koledar-glava">
                         <button class="koledar-nav-btn" onclick="navigirajKoledar(-1)">◀</button>
                         <button class="koledar-nav-btn" onclick="skociNaAktualniTeden()">T</button>
-                        <span class="koledar-naslov-gumb koledar-naslov-prikaz" onclick="preklopiPogledKoledarja()"></span>
+                        <button class="koledar-pogled-btn zaobli-levo koledar-pogled-teden" onclick="nastaviPogledKoledarja('"teden"')">Teden</button>
+                        <button class="koledar-pogled-btn koledar-pogled-mesec" onclick="nastaviPogledKoledarja('"mesec"')">Mesec</button>
+                        <button class="koledar-pogled-btn zaobli-desno koledar-pogled-leto" onclick="nastaviPogledKoledarja('"leto"')">Leto</button>
                         <button class="koledar-nav-btn" onclick="skociNaAktualniDan()">D</button>
                         <button class="koledar-nav-btn" onclick="navigirajKoledar(1)">▶</button>
                     </div>
@@ -618,21 +625,16 @@
         /* Funkcije drsanja (Swipe-to-delete) so odstranjene */
 
         function osveziKoledar() {
-            let glave = document.querySelectorAll('.koledar-naslov-prikaz');
             let mreze = document.querySelectorAll('.koledar-mreza-prikaz');
             let danes = new Date();
 
-            let polnoLeto = koledarDatum.getFullYear();
-            let kratkoLeto = String(polnoLeto).slice(-2);
+            let tedenGumbi = document.querySelectorAll('.koledar-pogled-teden');
+            let mesecGumbi = document.querySelectorAll('.koledar-pogled-mesec');
+            let letoGumbi = document.querySelectorAll('.koledar-pogled-leto');
 
-            let tekstGlave = '';
-            if (koledarPogled === 'leto') {
-                tekstGlave = kratkoLeto + ' ▾';
-            } else {
-                tekstGlave = slovenskiMeseci[koledarDatum.getMonth()] + ' ' + kratkoLeto + ' ▾';
-            }
-
-            glave.forEach(glava => glava.innerText = tekstGlave);
+            tedenGumbi.forEach(el => el.classList.toggle('aktiven', koledarPogled === 'teden'));
+            mesecGumbi.forEach(el => el.classList.toggle('aktiven', koledarPogled === 'mesec'));
+            letoGumbi.forEach(el => el.classList.toggle('aktiven', koledarPogled === 'leto'));
 
             mreze.forEach(mreza => {
                 mreza.innerHTML = '';
@@ -691,10 +693,8 @@
             osveziSeznamDnevov();
         }
 
-        function preklopiPogledKoledarja() {
-            if (koledarPogled === 'teden') koledarPogled = 'mesec';
-            else if (koledarPogled === 'mesec') koledarPogled = 'leto';
-            else koledarPogled = 'teden';
+        function nastaviPogledKoledarja(pogled) {
+            koledarPogled = pogled;
             osveziKoledar();
         }
 
