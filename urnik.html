@@ -76,6 +76,7 @@
         .koledar-celica:hover { background-color: #edf2f7; }
         .koledar-celica.trenutni-dan { background-color: #3498db; color: white; font-weight: bold; }
         .koledar-celica.izbran-dan { background-color: #9accef; color: white; font-weight: bold; }
+        .koledar-celica.rob-skrit { visibility: hidden; }
         .koledar-mesec-celica { padding: 14px 0; font-size: 15px; cursor: pointer; border-radius: 6px; color: #2c3e50; font-weight: bold; }
         .koledar-mesec-celica:hover { background-color: #edf2f7; }
         .koledar-mesec-celica.trenutni-mesec { background-color: #ebdcb0; border: 1px solid #d6c494; }
@@ -784,6 +785,11 @@
                 drsnik.scrollLeft = drsnik.clientWidth;
             }
 
+            if (koledarPogled === 'mesec') {
+                posodobiVidnostRobnihDni(drsnik);
+                drsnik.addEventListener('scroll', () => posodobiVidnostRobnihDni(drsnik), { passive: true });
+            }
+
             pripraviZaznavoDrsenja(drsnik, navpicno);
         }
 
@@ -822,10 +828,14 @@
 
                 let html = '<div class="koledar-mreza mreza-7 koledar-mreza-mesec">';
 
-                // Eno samo zaporedje 42 pravih datumov (rep prejšnjega meseca + tekoči mesec + napoved naslednjega) - vse celice enako klikljive in enobarvne
+                // Eno samo zaporedje 42 pravih datumov (rep prejšnjega meseca + tekoči mesec + napoved naslednjega) - vse celice enako
+                // klikljive in enobarvne. Robne celice (rob-prej/rob-potem) se dinamično skrijejo natanko takrat, ko je sosednji
+                // panel hkrati viden (glej posodobiVidnostRobnihDni) - tako ni nikoli podvojitve, brez premikanja drsenja.
                 for (let i = -startIndeks; i < zadnjiDan.getDate() + steviloNaslednjih; i++) {
                     let d = new Date(leto, mesec, 1 + i);
                     let klasi = 'koledar-celica';
+                    if (i < 0) klasi += ' rob-prej';
+                    if (i >= zadnjiDan.getDate()) klasi += ' rob-potem';
                     if (d.getDate() === 1) klasi += ' prvi-v-mesecu';
                     if (jeIstiDatum(d, danes)) klasi += ' trenutni-dan';
                     if (jeIstiDatum(d, koledarDatum)) klasi += ' izbran-dan';
@@ -847,6 +857,23 @@
             });
             html += '</div>';
             return html;
+        }
+
+        // Skrije robne dni (rob-prej/rob-potem) natanko takrat, ko sta dva sosednja panela hkrati vidna v oknu -
+        // s tem noben datum ni nikoli hkrati prikazan dvakrat, ne glede na to, kje drsenje obstane. Nič se ne premika.
+        function posodobiVidnostRobnihDni(drsnik) {
+            let paneli = drsnik.children;
+            if (paneli.length < 2) return;
+            let okno = drsnik.getBoundingClientRect();
+
+            for (let i = 0; i < paneli.length - 1; i++) {
+                let a = paneli[i].getBoundingClientRect();
+                let b = paneli[i + 1].getBoundingClientRect();
+                let obaHkratiVidna = a.bottom > okno.top + 1 && a.top < okno.bottom - 1 &&
+                                     b.top < okno.bottom - 1 && b.bottom > okno.top + 1;
+                paneli[i].querySelectorAll('.rob-potem').forEach(el => el.classList.toggle('rob-skrit', obaHkratiVidna));
+                paneli[i + 1].querySelectorAll('.rob-prej').forEach(el => el.classList.toggle('rob-skrit', obaHkratiVidna));
+            }
         }
 
         function pripraviZaznavoDrsenja(drsnik, navpicno) {
