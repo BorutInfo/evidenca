@@ -87,8 +87,8 @@
         .koledar-dnevi-imena-fiksne { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
         .koledar-drsnik { display: flex; scrollbar-width: none; }
         .koledar-drsnik::-webkit-scrollbar { display: none; }
-        .koledar-drsnik-vodoravno { flex-direction: row; overflow-x: scroll; overflow-y: hidden; scroll-snap-type: x mandatory; touch-action: pan-x; }
-        .koledar-drsnik-navpicno { flex-direction: column; overflow-y: scroll; overflow-x: hidden; scroll-snap-type: y mandatory; touch-action: pan-y; margin-top: 4px; }
+        .koledar-drsnik-vodoravno { flex-direction: row; overflow-x: scroll; overflow-y: hidden; scroll-snap-type: none; touch-action: pan-x; }
+        .koledar-drsnik-navpicno { flex-direction: column; overflow-y: scroll; overflow-x: hidden; scroll-snap-type: none; touch-action: pan-y; margin-top: 4px; }
         .koledar-drsnik-navpicno.nacin-mesec { height: 224px; }
         .koledar-drsnik-navpicno.nacin-leto { height: 196px; }
         .koledar-drsni-panel { flex: 0 0 100%; min-width: 0; min-height: 0; scroll-snap-align: start; scroll-snap-stop: always; }
@@ -1027,6 +1027,11 @@
 
         function preklopiKoledar() {
             koledarStanje = (koledarStanje + 1) % 3;
+            if (koledarStanje === 2) {
+                // Ob popolnem zaprtju se koledar ponastavi na tekoči datum (pogled teden/mesec/leto ostane nespremenjen)
+                koledarDatum = new Date();
+                osveziKoledar();
+            }
             posodobiPrikazKoledarja();
         }
 
