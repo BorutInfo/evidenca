@@ -839,7 +839,7 @@
                     if (d.getDate() === 1) klasi += ' prvi-v-mesecu';
                     if (jeIstiDatum(d, danes)) klasi += ' trenutni-dan';
                     if (jeIstiDatum(d, koledarDatum)) klasi += ' izbran-dan';
-                    html += `<div class="${klasi}" onclick="klikniDanKoledarja(${d.getTime()})">${d.getDate()}</div>`;
+                    html += `<div class="${klasi}" data-dan="${d.getTime()}" onclick="klikniDanKoledarja(${d.getTime()})">${d.getDate()}</div>`;
                 }
 
                 html += '</div>';
@@ -866,13 +866,28 @@
             if (paneli.length < 2) return;
             let okno = drsnik.getBoundingClientRect();
 
+            function jeVOknu(el) {
+                let r = el.getBoundingClientRect();
+                return r.bottom > okno.top + 1 && r.top < okno.bottom - 1;
+            }
+
             for (let i = 0; i < paneli.length - 1; i++) {
-                let a = paneli[i].getBoundingClientRect();
-                let b = paneli[i + 1].getBoundingClientRect();
-                let obaHkratiVidna = a.bottom > okno.top + 1 && a.top < okno.bottom - 1 &&
-                                     b.top < okno.bottom - 1 && b.bottom > okno.top + 1;
-                paneli[i].querySelectorAll('.rob-potem').forEach(el => el.classList.toggle('rob-skrit', obaHkratiVidna));
-                paneli[i + 1].querySelectorAll('.rob-prej').forEach(el => el.classList.toggle('rob-skrit', obaHkratiVidna));
+                let trenutni = paneli[i];
+                let naslednji = paneli[i + 1];
+
+                // Vsako robno celico preverim posamezno - skrijem jo samo, če je TOČNO NJEN ujemajoči
+                // dan (isti datum) v sosednjem panelu hkrati tudi viden. Če ni, ostane vidna (brez vrzeli).
+                trenutni.querySelectorAll('.rob-potem').forEach(el => {
+                    let ujemanje = naslednji.querySelector('[data-dan="' + el.dataset.dan + '"]');
+                    let prekrivanje = !!ujemanje && jeVOknu(el) && jeVOknu(ujemanje);
+                    el.classList.toggle('rob-skrit', prekrivanje);
+                });
+
+                naslednji.querySelectorAll('.rob-prej').forEach(el => {
+                    let ujemanje = trenutni.querySelector('[data-dan="' + el.dataset.dan + '"]');
+                    let prekrivanje = !!ujemanje && jeVOknu(el) && jeVOknu(ujemanje);
+                    el.classList.toggle('rob-skrit', prekrivanje);
+                });
             }
         }
 
