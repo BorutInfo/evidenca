@@ -76,7 +76,6 @@
         .koledar-celica:hover { background-color: #edf2f7; }
         .koledar-celica.trenutni-dan { background-color: #3498db; color: white; font-weight: bold; }
         .koledar-celica.izbran-dan { background-color: #9accef; color: white; font-weight: bold; }
-        .koledar-celica.rob-skrit { visibility: hidden; }
         .koledar-mesec-celica { padding: 14px 0; font-size: 15px; cursor: pointer; border-radius: 6px; color: #2c3e50; font-weight: bold; }
         .koledar-mesec-celica:hover { background-color: #edf2f7; }
         .koledar-mesec-celica.trenutni-mesec { background-color: #ebdcb0; border: 1px solid #d6c494; }
@@ -99,7 +98,8 @@
         .koledar-drsnik-navpicno.nacin-mesec { height: 224px; }
         .koledar-drsnik-navpicno.nacin-leto { height: 196px; }
         .koledar-drsni-panel { flex: 0 0 100%; min-width: 0; min-height: 0; scroll-snap-align: start; scroll-snap-stop: always; }
-        .koledar-mreza-mesec { height: 100%; grid-template-rows: repeat(6, 1fr); }
+        /* Mesečni pogled = en neprekinjen niz tednov (vsak datum le enkrat). Vrstica 34px + 4px reža = korak 38px; 6 vrstic (6*34 + 5*4) = 224px = višina okna. */
+        .koledar-mreza-mesec { grid-auto-rows: 34px; flex: 0 0 auto; }
         .koledar-mreza-leto { height: 100%; grid-template-rows: repeat(4, 1fr); }
         .koledar-mreza-mesec .koledar-celica { display: flex; align-items: center; justify-content: center; padding: 0; }
         .koledar-mreza-leto .koledar-mesec-celica { display: flex; align-items: center; justify-content: center; padding: 0; }
@@ -730,9 +730,9 @@
             let mesecGumbi = document.querySelectorAll('.koledar-pogled-mesec');
             let letoGumbi = document.querySelectorAll('.koledar-pogled-leto');
 
-            tedenGumbi.forEach(el => el.classList.toggle('aktiven', koledarPogled === 'teden'));
-            mesecGumbi.forEach(el => el.classList.toggle('aktiven', koledarPogled === 'mesec'));
-            letoGumbi.forEach(el => el.classList.toggle('aktiven', koledarPogled === 'leto'));
+            tedenGumbi.forEach(el => el.classList.toggle('aktiven', koledarPogled === 'teden' && koledarStanje === 0));
+            mesecGumbi.forEach(el => el.classList.toggle('aktiven', koledarPogled === 'mesec' && koledarStanje === 0));
+            letoGumbi.forEach(el => el.classList.toggle('aktiven', koledarPogled === 'leto' && koledarStanje === 0));
 
             posodobiOsrednjeGumbe(tedenGumbi, mesecGumbi, letoGumbi);
 
@@ -755,14 +755,32 @@
 
             okvir.innerHTML = '';
 
+            // --- MESEC: en neprekinjen niz tednov (brez commit-drsenja; prosto, gladko drsenje, brez podvajanja) ---
             if (koledarPogled === 'mesec') {
                 let glava = document.createElement('div');
                 glava.className = 'koledar-dnevi-imena-fiksne';
                 slovenskiDneviKratki.forEach(d => glava.innerHTML += `<div class="koledar-dan-ime">${d}</div>`);
                 okvir.appendChild(glava);
+
+                let drsnik = document.createElement('div');
+                drsnik.className = 'koledar-drsnik koledar-drsnik-navpicno nacin-mesec';
+                let zgrajeno = zgradiNeprekinjenMesecHtml(danes, koledarDatum);
+                drsnik.innerHTML = zgrajeno.html;
+                okvir.appendChild(drsnik);
+                drsnik._zgrajenZaPogled = koledarPogled;
+                drsnik._zgrajenZaDatum = koledarDatum.getTime();
+                drsnik._zacetnaVrstica = zgrajeno.zacetnaVrstica;
+                drsnik._zacetniDatum = zgrajeno.zacetniDatum;
+                drsnik._sidro = new Date(koledarDatum.getFullYear(), koledarDatum.getMonth(), 1).getTime();
+                drsnik._navigira = false;
+
+                pripraviMesecnoDrsenje(drsnik);
+                poravnajMesecniDrsnik(drsnik);
+                return;
             }
 
-            let navpicno = (koledarPogled === 'mesec' || koledarPogled === 'leto');
+            // --- TEDEN (vodoravno) / LETO (navpicno): obstoječi 3-panelni drsnik, nespremenjen ---
+            let navpicno = (koledarPogled === 'leto');
             let drsnik = document.createElement('div');
             drsnik.className = 'koledar-drsnik ' + (navpicno ? ('koledar-drsnik-navpicno nacin-' + koledarPogled) : 'koledar-drsnik-vodoravno');
 
@@ -785,12 +803,241 @@
                 drsnik.scrollLeft = drsnik.clientWidth;
             }
 
-            if (koledarPogled === 'mesec') {
-                posodobiVidnostRobnihDni(drsnik);
-                drsnik.addEventListener('scroll', () => posodobiVidnostRobnihDni(drsnik), { passive: true });
-            }
-
             pripraviZaznavoDrsenja(drsnik, navpicno);
+        }
+
+        // Mesečni pogled: en neprekinjen niz tednov okoli tekočega meseca. Vsak datum obstaja NATANKO ENKRAT,
+        // zato podvajanja ni mogoče, ne glede na položaj drsenja. Vse celice so prave, klikljive in enobarvne.
+        function zgradiNeprekinjenMesecHtml(danes, sredina) {
+            const TEDNOV_PREJ = 20, TEDNOV_POTEM = 20;
+            if (!sredina) sredina = koledarDatum;
+
+            // Ponedeljek 1. tedna meseca, na katerega centriramo
+            let prviVMesecu = new Date(sredina.getFullYear(), sredina.getMonth(), 1);
+            let dvT = prviVMesecu.getDay();
+            let nazaj = (dvT === 0 ? 6 : dvT - 1);
+            let prviPon = new Date(prviVMesecu);
+            prviPon.setDate(prviPon.getDate() - nazaj);
+
+            // Začetek niza (buffer navzgor), skupno število vrstic (buffer + do 6 vrstic meseca + buffer)
+            let start = new Date(prviPon);
+            start.setDate(start.getDate() - TEDNOV_PREJ * 7);
+            let skupajVrstic = TEDNOV_PREJ + 6 + TEDNOV_POTEM;
+
+            let html = '<div class="koledar-mreza mreza-7 koledar-mreza-mesec">';
+            let d = new Date(start);
+            for (let i = 0; i < skupajVrstic * 7; i++) {
+                let klasi = 'koledar-celica';
+                if (d.getDate() === 1) klasi += ' prvi-v-mesecu';
+                if (jeIstiDatum(d, danes)) klasi += ' trenutni-dan';
+                if (jeIstiDatum(d, koledarDatum)) klasi += ' izbran-dan';
+                html += `<div class="${klasi}" onclick="klikniDanKoledarja(${d.getTime()})">${d.getDate()}</div>`;
+                d.setDate(d.getDate() + 1);
+            }
+            html += '</div>';
+            return { html, zacetnaVrstica: TEDNOV_PREJ, zacetniDatum: start.getTime() };
+        }
+
+        // Poravna mesečni niz: če je bil zgrajen skrit oz. svež (scrollTop 0), poravna 1. teden centriranega
+        // meseca na vrh; če je uporabnik že drsel (scrollTop != 0), ohrani položaj. Korak vrstice izmeri v živo.
+        function poravnajMesecniDrsnik(drsnik) {
+            if (drsnik.scrollTop !== 0) { posodobiOznakoIzNiza(drsnik); return; }
+            let celice = drsnik.querySelectorAll('.koledar-celica');
+            if (celice.length <= 7) return;
+            let korak = celice[7].offsetTop - celice[0].offsetTop;
+            if (korak > 0) drsnik.scrollTop = (drsnik._zacetnaVrstica || 0) * korak;
+            posodobiOznakoIzNiza(drsnik);
+        }
+
+        // Mesec na sredini vidnega okna (četrtek sredinske vrstice = prevladujoči mesec tedna)
+        function mesecVOknu(drsnik) {
+            let celice = drsnik.querySelectorAll('.koledar-celica');
+            if (celice.length <= 7 || !drsnik._zacetniDatum) return null;
+            let korak = celice[7].offsetTop - celice[0].offsetTop;
+            if (korak <= 0) return null;
+            let sredinskaVrstica = Math.floor((drsnik.scrollTop + drsnik.clientHeight / 2) / korak);
+            let d = new Date(drsnik._zacetniDatum);
+            d.setDate(d.getDate() + sredinskaVrstica * 7 + 3);
+            return d;
+        }
+
+        // Oznaka meseca/leta (osrednja gumba) sledi mesecu na sredini okna
+        function posodobiOznakoIzNiza(drsnik) {
+            let d = mesecVOknu(drsnik);
+            if (!d) return;
+            document.querySelectorAll('.koledar-pogled-mesec').forEach(el => el.textContent = slovenskiMeseci[d.getMonth()]);
+            document.querySelectorAll('.koledar-pogled-leto').forEach(el => el.textContent = String(d.getFullYear()).slice(-2));
+        }
+
+        // Ponovno zgradi niz, centriran na 'sredina'. Če je podan 'ohraniDatum', ga postavi na isti vizualni
+        // položaj (neopazna razširitev ob robu); sicer poravna 1. teden meseca 'sredina' na vrh.
+        function prezgradiMesecniNiz(drsnik, sredina, ohraniDatum, ohraniOffset) {
+            let zgrajeno = zgradiNeprekinjenMesecHtml(new Date(), sredina);
+            drsnik.innerHTML = zgrajeno.html;
+            drsnik._zacetnaVrstica = zgrajeno.zacetnaVrstica;
+            drsnik._zacetniDatum = zgrajeno.zacetniDatum;
+            let celice = drsnik.querySelectorAll('.koledar-celica');
+            let korak = (celice.length > 7) ? (celice[7].offsetTop - celice[0].offsetTop) : 0;
+            if (korak <= 0) korak = drsnik.clientHeight / 6;
+            if (ohraniDatum) {
+                let dni = Math.round((ohraniDatum.getTime() - zgrajeno.zacetniDatum) / 86400000);
+                drsnik.scrollTop = Math.round(dni / 7) * korak + (ohraniOffset || 0);
+            } else {
+                drsnik.scrollTop = zgrajeno.zacetnaVrstica * korak;
+            }
+            posodobiOznakoIzNiza(drsnik);
+        }
+
+        // Shrani sidrni mesec (1. v mesecu na sredini okna) — izhodišče za puščice pri PROSTEM drsenju.
+        function sidroIzOkna(drsnik) {
+            let d = mesecVOknu(drsnik);
+            if (d) drsnik._sidro = new Date(d.getFullYear(), d.getMonth(), 1).getTime();
+        }
+
+        // Poslušalca drsenja mesečnega niza: (1) oznaka sledi mesecu (časovno omejeno, brez rAF), (2) ob
+        // ustavitvi posodobi sidrni mesec in po potrebi tiho razširi niz. Med navigacijo s puščicami (_navigira)
+        // se sidro in razširitev NE dogajata (to prepreči race, ki bi cilj računal iz gibajočega položaja).
+        function pripraviMesecnoDrsenje(drsnik) {
+            let zadnjiCas = 0, casovnik = null;
+            function obUstavitvi() {
+                posodobiOznakoIzNiza(drsnik);
+                if (drsnik._navigira) return;
+                sidroIzOkna(drsnik);
+                morebitnaRazsiritev(drsnik);
+            }
+            drsnik.addEventListener('scroll', () => {
+                let zdaj = Date.now();
+                if (zdaj - zadnjiCas > 80) { zadnjiCas = zdaj; posodobiOznakoIzNiza(drsnik); if (!drsnik._navigira) sidroIzOkna(drsnik); }
+                if ('onscrollend' in window) return;
+                clearTimeout(casovnik);
+                casovnik = setTimeout(obUstavitvi, 150);
+            }, { passive: true });
+            drsnik.addEventListener('scrollend', obUstavitvi);
+        }
+
+        // Ko se drsenje ustavi blizu roba niza, ga tiho razširi (recentrira) in ohrani točen vizualni položaj.
+        function morebitnaRazsiritev(drsnik) {
+            if (drsnik._navigira) return; // med navigacijo s puščicami ne razširjaj (sicer race)
+            let celice = drsnik.querySelectorAll('.koledar-celica');
+            if (celice.length <= 7 || !drsnik._zacetniDatum) return;
+            let korak = celice[7].offsetTop - celice[0].offsetTop;
+            if (korak <= 0) return;
+            let skupajVrstic = celice.length / 7;
+            let vrhVrstica = drsnik.scrollTop / korak;
+            let dnoVrstica = skupajVrstic - (drsnik.scrollTop + drsnik.clientHeight) / korak;
+            if (vrhVrstica > 8 && dnoVrstica > 8) return;
+
+            let vrhRow = Math.floor(drsnik.scrollTop / korak);
+            let offset = drsnik.scrollTop - vrhRow * korak;
+            let vrhDatum = new Date(drsnik._zacetniDatum);
+            vrhDatum.setDate(vrhDatum.getDate() + vrhRow * 7);
+            prezgradiMesecniNiz(drsnik, vrhDatum, vrhDatum, offset);
+            sidroIzOkna(drsnik);
+        }
+
+        // Zanesljivo gladko drsenje po eni osi (lastna rAF-animacija — ker scrollTo({behavior:'smooth'}) v tem
+        // oknu ne deluje). navpicno=true → scrollTop, false → scrollLeft. Serializirano (nova prekliče prejšnjo).
+        function gladkoDrsi(el, cilj, navpicno, trajanje, koncano) {
+            if (el._anim) el._anim.preklican = true;
+            let anim = { preklican: false };
+            el._anim = anim;
+            let pozicija = () => navpicno ? el.scrollTop : el.scrollLeft;
+            let nastavi = (v) => { if (navpicno) el.scrollTop = v; else el.scrollLeft = v; };
+            let zacetek = pozicija();
+            let razlika = cilj - zacetek;
+            function zakljuci() { if (el._anim === anim) el._anim = null; if (koncano) koncano(); }
+            if (Math.abs(razlika) < 1) { nastavi(cilj); zakljuci(); return; }
+            let zacetniCas = null;
+            function korak(ts) {
+                if (anim.preklican) return; // preklicana s strani novejše animacije — ne piši več
+                if (zacetniCas === null) zacetniCas = ts;
+                let t = Math.min(1, (ts - zacetniCas) / trajanje);
+                let ease = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2; // easeInOutQuad
+                nastavi(zacetek + razlika * ease);
+                if (t < 1) requestAnimationFrame(korak); else { anim.preklican = true; zakljuci(); }
+            }
+            requestAnimationFrame(korak);
+            // Varovalo: če rAF ne teče (npr. skrit zavihek) in se nič ne premakne, po izteku skoči na cilj.
+            setTimeout(() => {
+                if (!anim.preklican && Math.round(pozicija()) === Math.round(zacetek)) { anim.preklican = true; nastavi(cilj); zakljuci(); }
+            }, trajanje + 90);
+        }
+
+        // Mesečni pogled je vedno navpičen.
+        function gladkoDrsiMesec(drsnik, cilj, trajanje, koncano) { gladkoDrsi(drsnik, cilj, true, trajanje, koncano); }
+
+        // Puščica ◀▶ v TEDENSKEM/LETNEM pogledu: gladko zapelji 3-panelni karusel na sosednji panel, nato ob
+        // koncu animacije opravi navigacijo (rebuild recentriran). Zaznava drsenja med tem ne posega (_rocno).
+        // Vrne true, če je animacijo sprožil (sicer naj klic pade na takojšnji rebuild).
+        function premakniTedenskiLetni(smer) {
+            let aktiven = document.querySelector('.zaslon.aktiven');
+            if (!aktiven) return false;
+            let drsnik = aktiven.querySelector('.koledar-drsnik-vodoravno, .koledar-drsnik-navpicno.nacin-leto');
+            if (!drsnik) return false;
+            let navpicno = drsnik.classList.contains('koledar-drsnik-navpicno');
+            let velikost = navpicno ? drsnik.clientHeight : drsnik.clientWidth;
+            if (!velikost) return false;
+            if (drsnik._rocno) return true; // animacija že v teku — ne podvajaj
+
+            drsnik._rocno = true;
+            let cilj = (smer > 0 ? 2 : 0) * velikost; // panel +1 (naprej) ali panel -1 (nazaj)
+            gladkoDrsi(drsnik, cilj, navpicno, 300, () => {
+                // po koncu animacije: commit (rebuild recentriran na novo obdobje). Nov drsnik nima _rocno.
+                navigirajKoledar(smer, drsnik.parentElement, cilj - smer * velikost);
+            });
+            return true;
+        }
+
+        // Vrstica 1. tedna danega meseca glede na dani začetni datum niza
+        function vrsticaMeseca(mesec, zacetniDatum) {
+            let dvT = mesec.getDay();
+            let nazajC = (dvT === 0 ? 6 : dvT - 1);
+            let pon = new Date(mesec);
+            pon.setDate(pon.getDate() - nazajC);
+            return Math.round((pon.getTime() - zacetniDatum) / 86400000 / 7);
+        }
+        function korakNiza(drsnik) {
+            let c = drsnik.querySelectorAll('.koledar-celica');
+            return c.length > 7 ? (c[7].offsetTop - c[0].offsetTop) : 0;
+        }
+
+        // Gumba ◀▶ v mesečnem pogledu — RACE-FREE gladko:
+        //  - cilj se šteje iz SHRANJENEGA sidrnega meseca (_sidro), ne iz gibajočega položaja;
+        //  - nova animacija prekliče prejšnjo (v gladkoDrsiMesec);
+        //  - _navigira prepreči tiho razširitev med animacijo;
+        //  - če je cilj preblizu roba, niz gladko recentriramo (ohranimo vrh, nato animiramo do cilja).
+        function premakniMesecniPogled(smer) {
+            let aktiven = document.querySelector('.zaslon.aktiven');
+            let drsnik = aktiven ? aktiven.querySelector('.nacin-mesec') : null;
+            if (!drsnik) return;
+
+            if (drsnik._anim) drsnik._anim.preklican = true; // takoj ustavi morebitno tekočo animacijo
+
+            let sidro = drsnik._sidro ? new Date(drsnik._sidro) : (mesecVOknu(drsnik) || new Date(koledarDatum));
+            let cilj = new Date(sidro.getFullYear(), sidro.getMonth() + smer, 1);
+            drsnik._sidro = cilj.getTime();
+            drsnik._navigira = true;
+
+            let koncano = () => { drsnik._navigira = false; posodobiOznakoIzNiza(drsnik); };
+
+            let korak = korakNiza(drsnik);
+            let skupajVrstic = drsnik.querySelectorAll('.koledar-celica').length / 7;
+            let ciljnaVrstica = vrsticaMeseca(cilj, drsnik._zacetniDatum);
+
+            if (korak > 0 && ciljnaVrstica >= 8 && ciljnaVrstica <= skupajVrstic - 12) {
+                // dovolj daleč od robov — samo gladko animiraj v obstoječem nizu
+                gladkoDrsiMesec(drsnik, ciljnaVrstica * korak, 350, koncano);
+            } else {
+                // gladko recentriranje: ohrani trenutni vrh pri prezgradnji okoli cilja, nato animiraj do cilja
+                let vrhRow = Math.max(0, Math.round(drsnik.scrollTop / (korak || 1)));
+                let offset = drsnik.scrollTop - vrhRow * (korak || 0);
+                let vrhDatum = new Date(drsnik._zacetniDatum);
+                vrhDatum.setDate(vrhDatum.getDate() + vrhRow * 7);
+                prezgradiMesecniNiz(drsnik, cilj, vrhDatum, offset);
+                let novKorak = korakNiza(drsnik) || korak;
+                let novaCiljnaVrstica = vrsticaMeseca(cilj, drsnik._zacetniDatum);
+                gladkoDrsiMesec(drsnik, novaCiljnaVrstica * novKorak, 350, koncano);
+            }
         }
 
         function zgradiPanelKoledarjaHtml(pogled, odmik, danes) {
@@ -814,38 +1061,6 @@
                 return html;
             }
 
-            if (pogled === 'mesec') {
-                let prviDan = new Date(koledarDatum.getFullYear(), koledarDatum.getMonth() + odmik, 1);
-                let leto = prviDan.getFullYear();
-                let mesec = prviDan.getMonth();
-                let zadnjiDan = new Date(leto, mesec + 1, 0);
-
-                let startIndeks = prviDan.getDay() - 1;
-                if (startIndeks < 0) startIndeks = 6;
-
-                // Vedno natanko 6 vrstic (42 celic), da so vsi paneli enako visoki za gladko navpično drsenje
-                let steviloNaslednjih = 42 - (startIndeks + zadnjiDan.getDate());
-
-                let html = '<div class="koledar-mreza mreza-7 koledar-mreza-mesec">';
-
-                // Eno samo zaporedje 42 pravih datumov (rep prejšnjega meseca + tekoči mesec + napoved naslednjega) - vse celice enako
-                // klikljive in enobarvne. Robne celice (rob-prej/rob-potem) se dinamično skrijejo natanko takrat, ko je sosednji
-                // panel hkrati viden (glej posodobiVidnostRobnihDni) - tako ni nikoli podvojitve, brez premikanja drsenja.
-                for (let i = -startIndeks; i < zadnjiDan.getDate() + steviloNaslednjih; i++) {
-                    let d = new Date(leto, mesec, 1 + i);
-                    let klasi = 'koledar-celica';
-                    if (i < 0) klasi += ' rob-prej';
-                    if (i >= zadnjiDan.getDate()) klasi += ' rob-potem';
-                    if (d.getDate() === 1) klasi += ' prvi-v-mesecu';
-                    if (jeIstiDatum(d, danes)) klasi += ' trenutni-dan';
-                    if (jeIstiDatum(d, koledarDatum)) klasi += ' izbran-dan';
-                    html += `<div class="${klasi}" data-dan="${d.getTime()}" onclick="klikniDanKoledarja(${d.getTime()})">${d.getDate()}</div>`;
-                }
-
-                html += '</div>';
-                return html;
-            }
-
             // leto
             let leto = koledarDatum.getFullYear() + odmik;
             let html = '<div class="koledar-mreza mreza-3 koledar-mreza-leto">';
@@ -859,44 +1074,12 @@
             return html;
         }
 
-        // Skrije robne dni (rob-prej/rob-potem) natanko takrat, ko sta dva sosednja panela hkrati vidna v oknu -
-        // s tem noben datum ni nikoli hkrati prikazan dvakrat, ne glede na to, kje drsenje obstane. Nič se ne premika.
-        function posodobiVidnostRobnihDni(drsnik) {
-            let paneli = drsnik.children;
-            if (paneli.length < 2) return;
-            let okno = drsnik.getBoundingClientRect();
-
-            function jeVOknu(el) {
-                let r = el.getBoundingClientRect();
-                return r.bottom > okno.top + 1 && r.top < okno.bottom - 1;
-            }
-
-            for (let i = 0; i < paneli.length - 1; i++) {
-                let trenutni = paneli[i];
-                let naslednji = paneli[i + 1];
-
-                // Vsako robno celico preverim posamezno - skrijem jo samo, če je TOČNO NJEN ujemajoči
-                // dan (isti datum) v sosednjem panelu hkrati tudi viden. Če ni, ostane vidna (brez vrzeli).
-                trenutni.querySelectorAll('.rob-potem').forEach(el => {
-                    let ujemanje = naslednji.querySelector('[data-dan="' + el.dataset.dan + '"]');
-                    let prekrivanje = !!ujemanje && jeVOknu(el) && jeVOknu(ujemanje);
-                    el.classList.toggle('rob-skrit', prekrivanje);
-                });
-
-                naslednji.querySelectorAll('.rob-prej').forEach(el => {
-                    let ujemanje = trenutni.querySelector('[data-dan="' + el.dataset.dan + '"]');
-                    let prekrivanje = !!ujemanje && jeVOknu(el) && jeVOknu(ujemanje);
-                    el.classList.toggle('rob-skrit', prekrivanje);
-                });
-            }
-        }
-
         function pripraviZaznavoDrsenja(drsnik, navpicno) {
             let zaklenjeno = false;
             let casovnik = null;
 
             function obravnavajKonecDrsanja() {
-                if (zaklenjeno) return;
+                if (zaklenjeno || drsnik._rocno) return; // med ročno animacijo puščic commit stori sama animacija
                 let velikost = navpicno ? drsnik.clientHeight : drsnik.clientWidth;
                 if (!velikost) return;
                 let pozicija = navpicno ? drsnik.scrollTop : drsnik.scrollLeft;
@@ -922,7 +1105,9 @@
             let zaslon = document.getElementById(idZaslona);
             if (!zaslon) return;
             zaslon.querySelectorAll('.koledar-drsnik').forEach(drsnik => {
-                if (drsnik.classList.contains('koledar-drsnik-navpicno')) {
+                if (drsnik.classList.contains('nacin-mesec')) {
+                    poravnajMesecniDrsnik(drsnik);
+                } else if (drsnik.classList.contains('koledar-drsnik-navpicno')) {
                     drsnik.scrollTop = drsnik.clientHeight;
                 } else {
                     drsnik.scrollLeft = drsnik.clientWidth;
@@ -931,10 +1116,18 @@
         }
 
         function nastaviPogledKoledarja(pogled) {
-            koledarPogled = pogled;
             if (koledarStanje === 1) {
+                // Strnjeno (mreža skrita, vrstica vidna): kateri koli klik ponovno odpre mrežo na kliknjen pogled
+                koledarPogled = pogled;
                 koledarStanje = 0;
                 posodobiPrikazKoledarja();
+            } else if (koledarStanje === 0 && koledarPogled === pogled) {
+                // Odprto, klik na že aktiven pogled: strni mrežo (vrstica ostane vidna)
+                koledarStanje = 1;
+                posodobiPrikazKoledarja();
+            } else {
+                // Odprto, klik na drug pogled: samo zamenjaj pogled
+                koledarPogled = pogled;
             }
             osveziKoledar();
         }
@@ -962,6 +1155,9 @@
         }
 
         function navigirajKoledar(smer, izvorniOkvir, ohranjenaPozicija) {
+            if (koledarPogled === 'mesec') { premakniMesecniPogled(smer); return; }
+            // Klic iz puščice (ne iz drsenja): gladko zapelji karusel; commit stori zaznava drsenja.
+            if (izvorniOkvir === undefined && premakniTedenskiLetni(smer)) return;
             if (koledarPogled === 'teden') {
                 koledarDatum.setDate(koledarDatum.getDate() + (smer * 7));
             } else if (koledarPogled === 'mesec' || koledarPogled === 'leto') {
@@ -1080,16 +1276,19 @@
         // 0 = koledar (mreža + orodna vrstica) v celoti viden
         // 1 = mreža s številkami skrita, orodna vrstica (Ted/Mes/Let ipd.) ostane vidna
         // 2 = cel koledarski pas skrit
+        // Ikona (preklopiKoledar) preklaplja izključno med 0 <-> 2. Stanje 1 upravljajo
+        // izključno trije osrednji gumbi Ted/Mes/Let (glej nastaviPogledKoledarja).
         let koledarStanje = 0;
 
         function preklopiKoledar() {
             let prejsnjeStanje = koledarStanje;
-            koledarStanje = (koledarStanje + 1) % 3;
-            if (koledarStanje === 2) {
-                // Ob popolnem zaprtju se koledar ponastavi na tekoči datum (pogled teden/mesec/leto ostane nespremenjen)
-                koledarDatum = new Date();
-                osveziKoledar();
-            }
+            koledarStanje = (koledarStanje === 2) ? 0 : 2;
+
+            // Ob zapiranju IN ob odpiranju se koledar ponastavi na tekoči teden
+            koledarDatum = new Date();
+            koledarPogled = 'teden';
+            osveziKoledar();
+
             posodobiPrikazKoledarja();
             if (koledarStanje === 0 && prejsnjeStanje === 2) {
                 // Vrnitev iz popolnoma zaprtega stanja: paneli so bili zgrajeni medtem ko so bili skriti (brez veljavne širine/višine), zato jih je treba poravnati - šele ko so razredi za skrivanje že odstranjeni
