@@ -9,7 +9,10 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <style>
-        body { font-family: Arial, sans-serif; margin: 0; padding: 0; background-color: #f5f6fa; color: #333; display: flex; flex-direction: column; height: 100vh; height: 100dvh; overflow: hidden; }
+        body { font-family: Arial, sans-serif; margin: 0; padding: 0; background-color: #f5f6fa; color: #333; display: flex; flex-direction: column; height: 100vh; height: 100dvh; overflow: hidden; touch-action: manipulation; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+
+        /* Izjema: v predračunu je označevanje besedila dovoljeno (npr. za kopiranje zneska) */
+        #vsebina-pdf-racuna { -webkit-user-select: text; user-select: text; -webkit-touch-callout: default; }
         
         #glavni-vsebnik { flex: 1; display: flex; flex-direction: column; min-height: 0; position: relative; overflow: hidden; width: 100%; max-width: 400px; margin: 0 auto; background: white; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
         .zaslon { display: none; flex: 1; flex-direction: column; min-height: 0; width: 100%; background: white; }
@@ -32,7 +35,7 @@
         .ura-desno { font-size: 20px; color: #2c3e50; font-weight: bold; }
         .ime-sredina { position: absolute; left: 50%; transform: translateX(-50%); margin: 0; font-size: 20px; color: #2c3e50; font-weight: bold; white-space: nowrap; }
         
-        .btn-meni { display: block; width: 100%; padding: 15px; margin: 10px 0; font-size: 16px; font-weight: bold; text-align: left; background-color: #3498db; color: white; border: none; border-radius: 8px; cursor: pointer; height: auto; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+        .btn-meni { display: block; width: 100%; padding: 15px; margin: 10px 0; font-size: 16px; font-weight: bold; text-align: left; background-color: #3498db; color: white; border: none; border-radius: 8px; cursor: pointer; height: auto; }
         .btn-meni:active { background-color: #2980b9; }
         
         .izbran-ucenec { background-color: #1a5276 !important; border: 3px solid #2ecc71 !important; box-shadow: inset 0 0 5px rgba(0,0,0,0.2); }
@@ -107,7 +110,7 @@
         .izpis-prestavitve { display: none; padding: 10px; background: #fff3e0; border: 1px solid #ffe0b2; border-radius: 8px; text-align: center; color: #e67e22; font-weight: bold; margin: 15px 0; font-size: 15px; }
         
         /* NOVA NOGA IN IKONE */
-        .noga-ovoj { width: 100%; max-width: 400px; margin: 0 auto; background-color: #2c3e50; display: flex; justify-content: center; z-index: 100; flex-shrink: 0; }
+        .noga-ovoj { width: 100%; max-width: 400px; margin: 0 auto; background-color: #1a5276; display: flex; justify-content: center; z-index: 100; flex-shrink: 0; }
         .noga-fiksna { width: 100%; max-width: 400px; display: flex; justify-content: space-around; align-items: center; padding: 8px 0; padding-bottom: max(8px, env(safe-area-inset-bottom)); }
         .ikona-noga { display: flex; flex-direction: column; align-items: center; color: white; cursor: pointer; flex: 1; background: none; border: none; font-size: 22px; padding: 5px 0; opacity: 0.6; }
         .ikona-noga.aktivna { opacity: 1; color: #f1c40f; }
@@ -604,7 +607,7 @@
 
                 if (prikazaniDnevi.includes(imeDneva)) {
                     let jeIzbran = jeIstiDatum(trenutniDan, koledarDatum);
-                    let dodatniStil = jeIzbran ? 'background-color: #2c3e50; border: 2px solid #f1c40f;' : '';
+                    let dodatniStil = jeIzbran ? 'box-shadow: inset 0 0 0 3px #1a5276;' : '';
                     let izbranRazred = izbraniDnevi.includes(imeDneva) ? 'izbran-ucenec' : '';
 
                     izpis += `
