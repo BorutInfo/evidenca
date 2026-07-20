@@ -526,7 +526,11 @@
 
         // --- Pomožne poizvedbe nad modelom ---
         function normalizirajIme(ime) {
-            return String(ime || '').trim().toLowerCase().replace(/\s+/g, ' ');
+            // Isto ime prepozna ne glede na presledke (Ana1 = Ana 1) in
+            // ne glede na vrstni red besed (Ana Kovač = Kovač Ana).
+            let s = String(ime || '').trim().toLowerCase();
+            s = s.replace(/(\p{L})(\d)/gu, '$1 $2').replace(/(\d)(\p{L})/gu, '$1 $2');
+            return s.split(/\s+/).filter(Boolean).sort().join(' ');
         }
         function najdiOseboPoImenu(ime) {
             let n = normalizirajIme(ime);
