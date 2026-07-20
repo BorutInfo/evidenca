@@ -493,57 +493,215 @@
             'ned': { ime: 'Nedelja', kratica: 'NED', indeks: 6 }
         };
 
-        let prikazaniDnevi = ['Ponedeljek', 'Torek', 'Sreda', 'Četrtek', 'Petek', 'Sobota'];
+        // ============================================================
+        //  PODATKOVNI MODEL (različica 2)
+        //  osebe   = register vseh oseb; domuje v zavihku Kontakti
+        //  termini = stalni tedenski termini, ki se sklicujejo na osebo
+        //  Ena oseba ima lahko VEČ terminov (npr. ponedeljek in sreda).
+        //  Osebo lahko izbriše samo profil; urnik briše izključno termine.
+        // ============================================================
+        const VERZIJA_PODATKOV = 2;
+
+        let osebe = [];
+        let termini = [];
+        let zacasneSpremembe = [];
+        let evidencaUr = [];
+        let racuni = [];
+        let nastavitve = {
+            prikazaniDnevi: ['Ponedeljek', 'Torek', 'Sreda', 'Četrtek', 'Petek', 'Sobota'],
+            privzetaCena: 20,
+            privzetaDolzina: 30
+        };
+
+        let zadnjiId = 0;
+        function novId() { zadnjiId += 1; return zadnjiId; }
+
+        function osveziZadnjiId() {
+            let najvisji = 0;
+            [osebe, termini, zacasneSpremembe, evidencaUr, racuni].forEach(seznam => {
+                seznam.forEach(z => { if (z.id > najvisji) najvisji = z.id; });
+            });
+            zadnjiId = najvisji;
+        }
+
+        // --- Pomožne poizvedbe nad modelom ---
+        function normalizirajIme(ime) {
+            return String(ime || '').trim().toLowerCase().replace(/\s+/g, ' ');
+        }
+        function najdiOseboPoImenu(ime) {
+            let n = normalizirajIme(ime);
+            return osebe.find(o => normalizirajIme(o.ime) === n) || null;
+        }
+        function najdiOsebo(idOsebe) {
+            return osebe.find(o => o.id === idOsebe) || null;
+        }
+        function najdiTermin(idTermina) {
+            return termini.find(t => t.id === idTermina) || null;
+        }
+        function vMinute(ura) {
+            let d = String(ura).split(':');
+            return parseInt(d[0], 10) * 60 + parseInt(d[1], 10);
+        }
+        function vUro(minut) {
+            return String(Math.floor(minut / 60)).padStart(2, '0') + ':' + String(minut % 60).padStart(2, '0');
+        }
+        function terminiDneva(dan) {
+            return termini.filter(t => t.dan === dan).sort((a, b) => vMinute(a.ura) - vMinute(b.ura));
+        }
 
         // --- SISTEM ZA SHRANJEVANJE (localStorage) ---
         function shraniPodatke() {
-            localStorage.setItem('bazaUcencev', JSON.stringify(bazaUcencev));
-            localStorage.setItem('prikazaniDnevi', JSON.stringify(prikazaniDnevi));
+            localStorage.setItem('verzijaPodatkov', String(VERZIJA_PODATKOV));
+            localStorage.setItem('osebe', JSON.stringify(osebe));
+            localStorage.setItem('termini', JSON.stringify(termini));
+            localStorage.setItem('nastavitve', JSON.stringify(nastavitve));
+            localStorage.setItem('zacasneSpremembe', JSON.stringify(zacasneSpremembe));
+            localStorage.setItem('evidencaUr', JSON.stringify(evidencaUr));
+            localStorage.setItem('racuni', JSON.stringify(racuni));
         }
 
         function naloziPodatke() {
-            let shranjenaBaza = localStorage.getItem('bazaUcencev');
-            let shranjeniDnevi = localStorage.getItem('prikazaniDnevi');
-            
-            if (shranjenaBaza) {
-                bazaUcencev = JSON.parse(shranjenaBaza);
-            } else {
+            if (parseInt(localStorage.getItem('verzijaPodatkov'), 10) >= VERZIJA_PODATKOV) {
+                osebe = JSON.parse(localStorage.getItem('osebe') || '[]');
+                termini = JSON.parse(localStorage.getItem('termini') || '[]');
+                zacasneSpremembe = JSON.parse(localStorage.getItem('zacasneSpremembe') || '[]');
+                evidencaUr = JSON.parse(localStorage.getItem('evidencaUr') || '[]');
+                racuni = JSON.parse(localStorage.getItem('racuni') || '[]');
+                let shranjeneNastavitve = localStorage.getItem('nastavitve');
+                if (shranjeneNastavitve) Object.assign(nastavitve, JSON.parse(shranjeneNastavitve));
+                osveziZadnjiId();
+                return;
+            }
+            migrirajNaVerzijo2();
+        }
+
+        // ============================================================
+        //  MIGRACIJA v1 -> v2 (teče natanko enkrat)
+        //  Staro: bazaUcencev = { 'Ponedeljek': [ {id, ime, termin, minute, ...} ] }
+        //  Novo:  osebe[] + termini[]
+        //  Načelo "vse ali nič": zgradba se sestavi v pomnilniku, preveri,
+        //  in šele nato zapiše. Staro stanje se prej shrani v varnostno kopijo.
+        // ============================================================
+        function migrirajNaVerzijo2() {
+            let staraBaza = null;
+            let stariDnevi = null;
+            try {
+                let b = localStorage.getItem('bazaUcencev');
+                let d = localStorage.getItem('prikazaniDnevi');
+                if (b) staraBaza = JSON.parse(b);
+                if (d) stariDnevi = JSON.parse(d);
+            } catch (e) {
+                staraBaza = null;
+            }
+
+            if (!staraBaza) {
+                // Prva namestitev: uporabi vgrajene začetne podatke
                 nastaviZacetneTermine();
+                staraBaza = bazaUcencev;
+            } else {
+                localStorage.setItem('varnostnaKopija_v1', JSON.stringify({
+                    bazaUcencev: staraBaza,
+                    prikazaniDnevi: stariDnevi,
+                    cas: new Date().toISOString()
+                }));
             }
-            
-            if (shranjeniDnevi) {
-                prikazaniDnevi = JSON.parse(shranjeniDnevi);
+
+            let noveOsebe = [];
+            let noviTermini = [];
+            let stevec = 0;
+            let steviloStarihZapisov = 0;
+            let zdruzeni = {};
+
+            Object.keys(staraBaza).forEach(dan => {
+                (staraBaza[dan] || []).forEach(stari => {
+                    steviloStarihZapisov++;
+
+                    let n = normalizirajIme(stari.ime);
+                    let oseba = noveOsebe.find(o => normalizirajIme(o.ime) === n);
+                    if (!oseba) {
+                        oseba = {
+                            id: ++stevec,
+                            ime: String(stari.ime || '').trim(),
+                            telefon: '',
+                            mail: '',
+                            datumVpisa: '',
+                            datumIzpisa: '',
+                            cenaUre: nastavitve.privzetaCena,
+                            pavsal: null,
+                            zapiski: '',
+                            predvideno: 4,
+                            izvedeno: 0
+                        };
+                        noveOsebe.push(oseba);
+                        zdruzeni[n] = { ime: oseba.ime, dnevi: [dan] };
+                    } else {
+                        zdruzeni[n].dnevi.push(dan);
+                    }
+
+                    noviTermini.push({
+                        id: ++stevec,
+                        idOsebe: oseba.id,
+                        dan: dan,
+                        ura: stari.termin || '13:00',
+                        dolzina: stari.minute || nastavitve.privzetaDolzina
+                    });
+                });
+            });
+
+            // --- PREVERBA: vse ali nič ---
+            if (noviTermini.length !== steviloStarihZapisov || noveOsebe.length !== Object.keys(zdruzeni).length) {
+                alert("Pretvorba podatkov ni uspela. Podatki so ostali nespremenjeni.\n\n" +
+                      "Starih zapisov: " + steviloStarihZapisov + ", nastalih terminov: " + noviTermini.length);
+                return false;
             }
+
+            osebe = noveOsebe;
+            termini = noviTermini;
+            if (stariDnevi && stariDnevi.length) nastavitve.prikazaniDnevi = stariDnevi;
+            zadnjiId = stevec;
+            zacasneSpremembe = [];
+            evidencaUr = [];
+            racuni = [];
+            shraniPodatke();
+
+            let zdruzeniOpis = Object.keys(zdruzeni)
+                .filter(k => zdruzeni[k].dnevi.length > 1)
+                .map(k => zdruzeni[k].ime + ' (' + zdruzeni[k].dnevi.join(', ') + ')');
+            if (zdruzeniOpis.length > 0) {
+                alert("Posodobitev podatkov je končana.\n\nNaslednji učenci so bili prepoznani kot ena oseba z več termini:\n\n" + zdruzeniOpis.join('\n'));
+            }
+            return true;
+        }
+
+        // Vrnitev na stanje pred migracijo (varnostna mreža; zaenkrat brez gumba).
+        function vrniStaroStanje() {
+            let kopija = localStorage.getItem('varnostnaKopija_v1');
+            if (!kopija) { alert("Varnostne kopije ni."); return; }
+            let k = JSON.parse(kopija);
+            localStorage.setItem('bazaUcencev', JSON.stringify(k.bazaUcencev));
+            localStorage.setItem('prikazaniDnevi', JSON.stringify(k.prikazaniDnevi || []));
+            ['verzijaPodatkov', 'osebe', 'termini', 'nastavitve', 'zacasneSpremembe', 'evidencaUr', 'racuni']
+                .forEach(kljuc => localStorage.removeItem(kljuc));
+            alert("Staro stanje je obnovljeno. Uporabite prejšnjo različico aplikacije.");
         }
 
         function nastaviZacetneTermine() {
             for (let dan in bazaUcencev) {
                 let ura = 13;
                 let minute = 0;
-                let prekinjeno = false;
                 bazaUcencev[dan].forEach(ucenec => {
-                    if (prekinjeno) return;
-                    if (ura >= 24) {
-                        alert("Vnos ni več mogoč. Prišli ste do ure 23:59.");
-                        prekinjeno = true;
-                        return;
-                    }
-                    let strUre = String(ura).padStart(2, '0');
-                    let strMin = String(minute).padStart(2, '0');
-                    ucenec.termin = `${strUre}:${strMin}`;
+                    if (ura >= 24) return;
+                    ucenec.termin = String(ura).padStart(2, '0') + ':' + String(minute).padStart(2, '0');
                     minute += 30;
-                    if (minute >= 60) {
-                        ura += 1;
-                        minute = 0;
-                    }
+                    if (minute >= 60) { ura += 1; minute = 0; }
                 });
             }
-            shraniPodatke();
         }
 
         let izbraniDan = '';
-        let trenutniUcenec = null;
-        let izbraniUcenci = [];
+        let trenutnaOseba = null;
+        let trenutniTermin = null;
+        let izbraniTermini = [];
         let casovnikPritiska = null;
         let zacetniX = 0;
         let zacetniY = 0;
@@ -591,39 +749,39 @@
             if (!vnos) return;
             let geslo = vnos.trim().toLowerCase();
 
-            if (konfiguracijaDnevov[geslo]) {
-                let imeDneva = konfiguracijaDnevov[geslo].ime;
-                if (!prikazaniDnevi.includes(imeDneva)) {
-                    prikazaniDnevi.push(imeDneva);
-                    prikazaniDnevi.sort((a, b) => {
-                        let konfA = Object.values(konfiguracijaDnevov).find(d => d.ime === a);
-                        let konfB = Object.values(konfiguracijaDnevov).find(d => d.ime === b);
-                        return konfA.indeks - konfB.indeks;
-                    });
-                    if (!bazaUcencev[imeDneva]) {
-                        bazaUcencev[imeDneva] = [];
-                    }
-                    osveziSeznamDnevov();
-                    shraniPodatke();
-                } else {
-                    alert("Ta dan je že prikazan!");
-                }
-            } else {
+            if (!konfiguracijaDnevov[geslo]) {
                 alert("Napačna kratica! Uporabite: pon, tor, sre, čet, pet, sob ali ned.");
+                return;
             }
+
+            let imeDneva = konfiguracijaDnevov[geslo].ime;
+            if (nastavitve.prikazaniDnevi.includes(imeDneva)) {
+                alert("Ta dan je že prikazan!");
+                return;
+            }
+
+            nastavitve.prikazaniDnevi.push(imeDneva);
+            nastavitve.prikazaniDnevi.sort((a, b) => {
+                let konfA = Object.values(konfiguracijaDnevov).find(d => d.ime === a);
+                let konfB = Object.values(konfiguracijaDnevov).find(d => d.ime === b);
+                return konfA.indeks - konfB.indeks;
+            });
+            osveziSeznamDnevov();
+            shraniPodatke();
         }
 
         function izbrisiIzbraneDneve() {
-            if (confirm('Trajno izbrišem?')) {
-                izbraniDnevi.forEach(imeDneva => {
-                    prikazaniDnevi = prikazaniDnevi.filter(dan => dan !== imeDneva);
-                    delete bazaUcencev[imeDneva];
-                });
-                izbraniDnevi = [];
-                meniDneviOdprt = false;
-                osveziSeznamDnevov();
-                shraniPodatke();
-            }
+            if (!confirm('Trajno izbrišem?')) return;
+
+            izbraniDnevi.forEach(imeDneva => {
+                nastavitve.prikazaniDnevi = nastavitve.prikazaniDnevi.filter(dan => dan !== imeDneva);
+                termini = termini.filter(t => t.dan !== imeDneva);
+            });
+
+            izbraniDnevi = [];
+            meniDneviOdprt = false;
+            osveziSeznamDnevov();
+            shraniPodatke();
         }
 
         function osveziSeznamDnevov() {
@@ -636,7 +794,7 @@
             let prikazaniElementi = [];
             for (let i = 0; i < 7; i++) {
                 let konf = Object.values(konfiguracijaDnevov).find(d => d.indeks === i);
-                if (prikazaniDnevi.includes(konf.ime)) {
+                if (nastavitve.prikazaniDnevi.includes(konf.ime)) {
                     prikazaniElementi.push(konf.ime);
                 }
             }
@@ -661,7 +819,7 @@
                 let konf = Object.values(konfiguracijaDnevov).find(d => d.indeks === i);
                 let imeDneva = konf.ime;
 
-                if (prikazaniDnevi.includes(imeDneva)) {
+                if (nastavitve.prikazaniDnevi.includes(imeDneva)) {
                     let jeIzbran = jeIstiDatum(trenutniDan, koledarDatum);
                     let dodatniStil = jeIzbran ? 'box-shadow: inset 0 0 0 3px #1a5276;' : '';
                     let izbranRazred = izbraniDnevi.includes(imeDneva) ? 'izbran-ucenec' : '';
@@ -1244,7 +1402,7 @@
             let konf = Object.values(konfiguracijaDnevov).find(d => d.indeks === nasIndeks);
             let imeDneva = konf.ime;
 
-            if (!prikazaniDnevi.includes(imeDneva)) return;
+            if (!nastavitve.prikazaniDnevi.includes(imeDneva)) return;
 
             koledarDatum = new Date(timestamp);
             osveziKoledar();
@@ -1449,74 +1607,65 @@
             prikaziZaslon('zaslon-ucenci');
         }
 
-        function izbrisiIzbraneUcence() {
-            if (confirm('Trajno izbrišem?')) {
-                bazaUcencev[izbraniDan] = bazaUcencev[izbraniDan].filter(u => !izbraniUcenci.includes(u.id));
-                izbraniUcenci = [];
-                meniOdprt = false;
-                osveziSeznamUcencev();
-                shraniPodatke();
-            }
+        function izbrisiIzbraneTermine() {
+            if (!confirm('Trajno izbrišem?')) return;
+
+            termini = termini.filter(t => !izbraniTermini.includes(t.id));
+
+            izbraniTermini = [];
+            meniOdprt = false;
+            osveziSeznamUcencev();
+            shraniPodatke();
         }
 
         function klikNaUredi() {
-            if (izbraniUcenci.length === 0) {
+            if (izbraniTermini.length === 0) {
                 alert("Za urejanje najprej izberi (dolg pritisk gumba).");
-            } else {
-                if (meniOdprt) {
-                    meniOdprt = false;
-                    izbraniUcenci = [];
-                    osveziSeznamUcencev();
-                } else {
-                    meniOdprt = true;
-                    osveziSeznamUcencev();
-                }
+                return;
             }
+            if (meniOdprt) {
+                meniOdprt = false;
+                izbraniTermini = [];
+            } else {
+                meniOdprt = true;
+            }
+            osveziSeznamUcencev();
         }
 
         function osveziSeznamUcencev() {
             let izpis = '';
-            let ucenecList = [];
-            
-            if (prikazaniDnevi.includes(izbraniDan)) {
-                let bUcenci = bazaUcencev[izbraniDan] || [];
-                bUcenci.forEach((u, idx) => {
-                    ucenecList.push({ ucenec: u, originalIndeks: idx, izvorniDan: izbraniDan });
-                });
-            }
+            let seznam = nastavitve.prikazaniDnevi.includes(izbraniDan) ? terminiDneva(izbraniDan) : [];
 
-            if (ucenecList.length === 0) {
+            if (seznam.length === 0) {
                 izpis = '<div style="text-align:center; padding: 20px; color: #7f8c8d;">Za ta dan ni vpisanih učencev.</div>';
             } else {
                 let indeksZadnjegaOznacenega = -1;
-                ucenecList.forEach((item, indeks) => {
-                    if (izbraniUcenci.includes(item.ucenec.id)) {
-                        indeksZadnjegaOznacenega = indeks;
-                    }
+                seznam.forEach((t, indeks) => {
+                    if (izbraniTermini.includes(t.id)) indeksZadnjegaOznacenega = indeks;
                 });
 
-                ucenecList.forEach((item, indeks) => {
-                    let ucenec = item.ucenec;
-                    let prikazanTermin = ucenec.termin;
-                    let dodatniRazred = izbraniUcenci.includes(ucenec.id) ? 'izbran-ucenec' : '';
+                seznam.forEach((t, indeks) => {
+                    let oseba = najdiOsebo(t.idOsebe);
+                    let ime = oseba ? oseba.ime : '(neznana oseba)';
+                    let dodatniRazred = izbraniTermini.includes(t.id) ? 'izbran-ucenec' : '';
 
                     izpis += `
-                    <button class="btn-meni ${dodatniRazred}" style="width: 100%; padding: 12px 15px; box-sizing: border-box;" 
-                        ontouchstart="zacniDolgPritisk(event, ${ucenec.id}, '${item.izvorniDan}', ${item.originalIndeks})" 
-                        ontouchend="koncajDolgPritisk(event)" 
-                        ontouchmove="premakniDolgPritisk(event)" 
-                        onmousedown="zacniDolgPritisk(event, ${ucenec.id}, '${item.izvorniDan}', ${item.originalIndeks})" 
-                        onmouseup="koncajDolgPritisk(event)" 
-                        onmousemove="premakniDolgPritisk(event)" 
+                    <button class="btn-meni ${dodatniRazred}" style="width: 100%; padding: 12px 15px; box-sizing: border-box;"
+                        ontouchstart="zacniDolgPritisk(event, ${t.id})"
+                        ontouchend="koncajDolgPritisk(event)"
+                        ontouchmove="premakniDolgPritisk(event)"
+                        onmousedown="zacniDolgPritisk(event, ${t.id})"
+                        onmouseup="koncajDolgPritisk(event)"
+                        onmousemove="premakniDolgPritisk(event)"
                         onmouseleave="koncajDolgPritisk(event)"
-                        onclick="upravljajKlikUcenca(event, '${item.izvorniDan}', ${item.originalIndeks}, ${ucenec.id})">
+                        onclick="upravljajKlikUcenca(event, ${t.id})">
                         <div style="width: 100%; pointer-events: none;">
-                            <span class="termin-znacka" style="pointer-events: auto;" onclick="urediTerminIzSeznama(event, '${item.izvorniDan}', ${item.originalIndeks})">${prikazanTermin}</span>
-                            <strong>${ucenec.ime}</strong>
+                            <span class="termin-znacka" style="pointer-events: auto;" onclick="urediTerminIzSeznama(event, ${t.id})">${t.ura}</span>
+                            <strong>${ime}</strong>
                         </div>
                     </button>`;
 
-                    if (indeks === indeksZadnjegaOznacenega && izbraniUcenci.length > 0 && meniOdprt) {
+                    if (indeks === indeksZadnjegaOznacenega && izbraniTermini.length > 0 && meniOdprt) {
                         izpis += `
                         <div class="sistemski-meni-ovoj">
                             <button class="btn-podmeni" onclick="alert('Kliknil si Premakni za x h x min'); event.stopPropagation();">
@@ -1525,27 +1674,27 @@
                             <button class="btn-podmeni" onclick="alert('Kliknil si Premakni na dan v tednu'); event.stopPropagation();">
                                 <span class="btn-podmeni-ikona"><span>📅</span> Premakni na dan v tednu</span>
                             </button>`;
-                            
-                        if (izbraniUcenci.length === 1) {
+
+                        if (izbraniTermini.length === 1) {
                             izpis += `
                             <button class="btn-podmeni" onclick="alert('Kliknil si Preimenuj'); event.stopPropagation();">
                                 <span class="btn-podmeni-ikona"><span>✏️</span> Preimenuj</span>
                             </button>`;
                         }
-                        
+
                         izpis += `
                             <button class="btn-podmeni" onclick="alert('Kliknil si Pavziraj učenca-e'); event.stopPropagation();">
                                 <span class="btn-podmeni-ikona"><span>⏸️</span> Pavziraj učenca-e</span>
                                 <span style="color: #bdc3c7;">❯</span>
                             </button>
-                            <button class="btn-podmeni" onclick="izbrisiIzbraneUcence(); event.stopPropagation();">
+                            <button class="btn-podmeni" onclick="izbrisiIzbraneTermine(); event.stopPropagation();">
                                 <span class="btn-podmeni-ikona"><span>🗑️</span> Zbriši učenca-e</span>
                             </button>
                         </div>`;
                     }
                 });
             }
-            
+
             document.getElementById('seznam-ucencev-izpis').innerHTML = izpis;
 
             if (meniOdprt) {
@@ -1560,44 +1709,41 @@
 
         function preveriInPrikaziPrekrivanje() {
             let opozoriloEl = document.getElementById('opozorilo-prekrivanje');
-            let dan = izbraniDan;
-            let indeksTrenutnega = bazaUcencev[dan].findIndex(u => u.id === trenutniUcenec.id);
-            
-            if (indeksTrenutnega === -1 || indeksTrenutnega === bazaUcencev[dan].length - 1) {
-                if(opozoriloEl) opozoriloEl.style.display = 'none';
+            if (!trenutniTermin) {
+                if (opozoriloEl) opozoriloEl.style.display = 'none';
                 return;
             }
 
-            let naslednjiUcenec = bazaUcencev[dan][indeksTrenutnega + 1];
-            
-            let deliTrenutni = trenutniUcenec.termin.split(':');
-            let zacetekTrenutniMinut = parseInt(deliTrenutni[0], 10) * 60 + parseInt(deliTrenutni[1], 10);
-            let konecTrenutniMinut = zacetekTrenutniMinut + trenutniUcenec.minute;
+            let seznam = terminiDneva(trenutniTermin.dan);
+            let i = seznam.findIndex(t => t.id === trenutniTermin.id);
 
-            let deliNaslednji = naslednjiUcenec.termin.split(':');
-            let zacetekNaslednjiMinut = parseInt(deliNaslednji[0], 10) * 60 + parseInt(deliNaslednji[1], 10);
+            if (i === -1 || i === seznam.length - 1) {
+                if (opozoriloEl) opozoriloEl.style.display = 'none';
+                return;
+            }
 
-            if (konecTrenutniMinut > zacetekNaslednjiMinut) {
-                if(opozoriloEl) opozoriloEl.style.display = 'block';
-            } else {
-                if(opozoriloEl) opozoriloEl.style.display = 'none';
+            let konecTrenutnega = vMinute(trenutniTermin.ura) + trenutniTermin.dolzina;
+            let zacetekNaslednjega = vMinute(seznam[i + 1].ura);
+
+            if (opozoriloEl) {
+                opozoriloEl.style.display = konecTrenutnega > zacetekNaslednjega ? 'block' : 'none';
             }
         }
 
-        function zacniDolgPritisk(event, idUcenca, dan, indeks) {
-            if (event.target.classList.contains('termin-znacka')) return; 
-            
+        function zacniDolgPritisk(event, idTermina) {
+            if (event.target.classList.contains('termin-znacka')) return;
+
             let dotik = event.touches ? event.touches[0] : event;
             zacetniX = dotik.clientX;
             zacetniY = dotik.clientY;
-            dolgPritiskIzveden = false; 
-            
+            dolgPritiskIzveden = false;
+
             casovnikPritiska = setTimeout(() => {
-                dolgPritiskIzveden = true; 
+                dolgPritiskIzveden = true;
                 if ('vibrate' in navigator) navigator.vibrate(50);
-                
-                if (!izbraniUcenci.includes(idUcenca)) {
-                    izbraniUcenci.push(idUcenca);
+
+                if (!izbraniTermini.includes(idTermina)) {
+                    izbraniTermini.push(idTermina);
                 }
                 osveziSeznamUcencev();
             }, 650);
@@ -1623,112 +1769,110 @@
             }
         }
 
-        function upravljajKlikUcenca(event, dan, indeks, idUcenca) {
-            if (event.target.classList.contains('termin-znacka')) return; 
-            
+        function upravljajKlikUcenca(event, idTermina) {
+            if (event.target.classList.contains('termin-znacka')) return;
+
             if (dolgPritiskIzveden) {
-                dolgPritiskIzveden = false; 
+                dolgPritiskIzveden = false;
                 return;
             }
-            
-            let pozicija = izbraniUcenci.indexOf(idUcenca);
+
+            let pozicija = izbraniTermini.indexOf(idTermina);
             if (pozicija !== -1) {
-                izbraniUcenci.splice(pozicija, 1);
-                if (izbraniUcenci.length === 0) {
+                izbraniTermini.splice(pozicija, 1);
+                if (izbraniTermini.length === 0) {
                     meniOdprt = false;
                 }
                 osveziSeznamUcencev();
             } else {
-                prikaziProfilUcenca(dan, indeks);
+                prikaziProfilUcenca(idTermina);
             }
         }
 
-        function prikaziProfilUcenca(dan, indeks) {
-            trenutniUcenec = bazaUcencev[dan][indeks];
-            
-            document.getElementById('podatki-ime').innerText = trenutniUcenec.ime;
-            document.getElementById('podatki-termin').innerText = trenutniUcenec.termin;
-            document.getElementById('podatki-predvideno').innerText = trenutniUcenec.predvideno;
-            document.getElementById('podatki-izvedeno').innerText = trenutniUcenec.izvedeno;
-            document.getElementById('okence-izpis').innerText = trenutniUcenec.minute + " min";
-            document.getElementById('vnos-cene-ure').value = trenutniUcenec.cenaUre || 20;
-            
+        function prikaziProfilUcenca(idTermina) {
+            trenutniTermin = najdiTermin(idTermina);
+            if (!trenutniTermin) return;
+            trenutnaOseba = najdiOsebo(trenutniTermin.idOsebe);
+            if (!trenutnaOseba) return;
+
+            document.getElementById('podatki-ime').innerText = trenutnaOseba.ime;
+            document.getElementById('podatki-termin').innerText = trenutniTermin.ura;
+            document.getElementById('podatki-predvideno').innerText = trenutnaOseba.predvideno;
+            document.getElementById('podatki-izvedeno').innerText = trenutnaOseba.izvedeno;
+            document.getElementById('okence-izpis').innerText = trenutniTermin.dolzina + " min";
+            document.getElementById('vnos-cene-ure').value = trenutnaOseba.cenaUre || nastavitve.privzetaCena;
+
             document.getElementById('minute-gumbi').style.display = 'none';
-            
+
             preveriInPrikaziPrekrivanje();
-            
+
             prikaziZaslon('zaslon-podatki');
         }
 
         function dodajUcenca() {
             let ime = prompt("Vnesite ime in priimek novega učenca:");
-            if (!ime) return;
+            if (!ime || !ime.trim()) return;
+            ime = ime.trim();
 
-            if (!bazaUcencev[izbraniDan]) bazaUcencev[izbraniDan] = [];
-
-            let ura = 13, minute = 0;
-            let zadnji = bazaUcencev[izbraniDan].length > 0 ? bazaUcencev[izbraniDan][bazaUcencev[izbraniDan].length - 1] : null;
-            
-            if (zadnji && zadnji.termin) {
-                let deli = zadnji.termin.split(':');
-                ura = parseInt(deli[0], 10);
-                minute = parseInt(deli[1], 10) + zadnji.minute;
-                if (minute >= 60) { 
-                    ura += Math.floor(minute / 60); 
-                    minute = minute % 60; 
-                }
+            // Eno ime = ena oseba. Če ime že obstaja, gre lahko le za isto osebo,
+            // ki dobi še en termin - sicer je treba vnesti drugačno ime.
+            let oseba = najdiOseboPoImenu(ime);
+            while (oseba && !confirm('"' + oseba.ime + '" že obstaja.\n\nAli gre za isto osebo in ji želite dodati še en termin?')) {
+                ime = prompt("Ime že obstaja. Napišite drugačno:");
+                if (!ime || !ime.trim()) return;
+                ime = ime.trim();
+                oseba = najdiOseboPoImenu(ime);
             }
 
-            let predlaganTermin = "";
-            if (ura >= 24) {
-                predlaganTermin = "08:00";
-            } else {
-                let strUre = String(ura).padStart(2, '0');
-                let strMin = String(minute).padStart(2, '0');
-                predlaganTermin = `${strUre}:${strMin}`;
+            let seznam = terminiDneva(izbraniDan);
+            let predlaganTermin = "13:00";
+            if (seznam.length > 0) {
+                let zadnji = seznam[seznam.length - 1];
+                let konec = vMinute(zadnji.ura) + zadnji.dolzina;
+                predlaganTermin = konec >= 1440 ? "08:00" : vUro(konec);
             }
 
             odpriIzbirnikUre(predlaganTermin, function(izbranTermin) {
-                let noviZacetekDeli = izbranTermin.split(':');
-                let noviZacetekMinut = parseInt(noviZacetekDeli[0], 10) * 60 + parseInt(noviZacetekDeli[1], 10);
-                let noviKonecMinut = noviZacetekMinut + 30;
+                let zacetek = vMinute(izbranTermin);
+                let konec = zacetek + nastavitve.privzetaDolzina;
 
-                let prekrivanje = false;
-                for (let i = 0; i < bazaUcencev[izbraniDan].length; i++) {
-                    let obstojeci = bazaUcencev[izbraniDan][i];
-                    let obstojeciDeli = obstojeci.termin.split(':');
-                    let obstojeciZacetekMinut = parseInt(obstojeciDeli[0], 10) * 60 + parseInt(obstojeciDeli[1], 10);
-                    let obstojeciKonecMinut = obstojeciZacetekMinut + obstojeci.minute;
-
-                    if (noviZacetekMinut < obstojeciKonecMinut && noviKonecMinut > obstojeciZacetekMinut) {
-                        prekrivanje = true;
-                        break;
-                    }
-                }
+                let prekrivanje = terminiDneva(izbraniDan).some(t => {
+                    let zacetekObstojecega = vMinute(t.ura);
+                    return zacetek < zacetekObstojecega + t.dolzina && konec > zacetekObstojecega;
+                });
 
                 if (prekrivanje) {
                     alert("Vpis ni mogoč. Ure se prekrivajo.");
                     return;
                 }
 
-                bazaUcencev[izbraniDan].push({
-                    id: Date.now(),
-                    ime: ime,
-                    predvideno: 4,
-                    izvedeno: 0,
-                    minute: 30,
-                    termin: izbranTermin,
-                    cenaUre: 20
+                if (!oseba) {
+                    oseba = {
+                        id: novId(),
+                        ime: ime,
+                        telefon: '',
+                        mail: '',
+                        datumVpisa: '',
+                        datumIzpisa: '',
+                        cenaUre: nastavitve.privzetaCena,
+                        pavsal: null,
+                        zapiski: '',
+                        predvideno: 4,
+                        izvedeno: 0
+                    };
+                    osebe.push(oseba);
+                }
+
+                termini.push({
+                    id: novId(),
+                    idOsebe: oseba.id,
+                    dan: izbraniDan,
+                    ura: izbranTermin,
+                    dolzina: nastavitve.privzetaDolzina
                 });
 
-                bazaUcencev[izbraniDan].sort((a, b) => {
-                    if (a.termin < b.termin) return -1;
-                    if (a.termin > b.termin) return 1;
-                    return 0;
-                });
-
-                osveziSeznamUcencev();
                 shraniPodatke();
+                osveziSeznamUcencev();
             });
         }
 
@@ -1801,81 +1945,63 @@
             povratniKlicIzbirnikaUre = null;
         }
 
-        function urediTerminIzProfila() {
-            odpriIzbirnikUre(trenutniUcenec.termin, function(formatiranTermin) {
-                let dan = izbraniDan;
+        // Premik termina na novo uro. Sosednji termini istega dne se po potrebi
+        // zamaknejo, da ne pride do prekrivanja. Skupno za profil in seznam.
+        function premakniTermin(idTermina, poKoncu) {
+            let termin = najdiTermin(idTermina);
+            if (!termin) return;
 
-                let kopija = JSON.parse(JSON.stringify(bazaUcencev[dan]));
-                kopija.forEach(u => {
-                    let d = u.termin.split(':');
-                    u.origMin = parseInt(d[0], 10) * 60 + parseInt(d[1], 10);
-                });
+            odpriIzbirnikUre(termin.ura, function(formatiranTermin) {
+                let kopija = terminiDneva(termin.dan).map(t => ({
+                    id: t.id, ura: t.ura, dolzina: t.dolzina, origMin: vMinute(t.ura)
+                }));
 
-                let ucenecVKopiji = kopija.find(u => u.id === trenutniUcenec.id);
-
-                let vnosDeli = formatiranTermin.split(':');
-                let vnosStartMinut = parseInt(vnosDeli[0], 10) * 60 + parseInt(vnosDeli[1], 10);
-                if (vnosStartMinut + ucenecVKopiji.minute > 1440) {
+                let sidro = kopija.find(t => t.id === idTermina);
+                if (vMinute(formatiranTermin) + sidro.dolzina > 1440) {
                     alert("Vnos ni mogoč. Prišli ste do ure 23:59.");
                     return;
                 }
-
-                ucenecVKopiji.termin = formatiranTermin;
+                sidro.ura = formatiranTermin;
 
                 kopija.sort((a, b) => {
-                    let minA = parseInt(a.termin.split(':')[0], 10) * 60 + parseInt(a.termin.split(':')[1], 10);
-                    let minB = parseInt(b.termin.split(':')[0], 10) * 60 + parseInt(b.termin.split(':')[1], 10);
+                    let minA = vMinute(a.ura);
+                    let minB = vMinute(b.ura);
                     if (minA !== minB) return minA - minB;
                     return a.origMin - b.origMin;
                 });
 
-                let anchorIndex = kopija.findIndex(u => u.id === trenutniUcenec.id);
+                let anchorIndex = kopija.findIndex(t => t.id === idTermina);
                 let prviZamik = 0;
                 let napakaMeje = false;
 
                 for (let i = anchorIndex - 1; i >= 0; i--) {
                     let next = kopija[i + 1];
                     let curr = kopija[i];
-
-                    let nextStart = parseInt(next.termin.split(':')[0], 10) * 60 + parseInt(next.termin.split(':')[1], 10);
-                    let currStart = parseInt(curr.termin.split(':')[0], 10) * 60 + parseInt(curr.termin.split(':')[1], 10);
-                    let currKonec = currStart + curr.minute;
+                    let currStart = vMinute(curr.ura);
+                    let currKonec = currStart + curr.dolzina;
+                    let nextStart = vMinute(next.ura);
 
                     if (currKonec > nextStart) {
                         let zamik = currKonec - nextStart;
                         if (prviZamik === 0) prviZamik = zamik;
-
                         let noviStart = currStart - zamik;
-                        if (noviStart < 0) {
-                            napakaMeje = true; break;
-                        }
-
-                        let h = Math.floor(noviStart / 60);
-                        let m = noviStart % 60;
-                        curr.termin = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+                        if (noviStart < 0) { napakaMeje = true; break; }
+                        curr.ura = vUro(noviStart);
                     }
                 }
 
                 for (let i = anchorIndex + 1; i < kopija.length; i++) {
                     let prev = kopija[i - 1];
                     let curr = kopija[i];
-
-                    let prevStart = parseInt(prev.termin.split(':')[0], 10) * 60 + parseInt(prev.termin.split(':')[1], 10);
-                    let prevKonec = prevStart + prev.minute;
-                    let currStart = parseInt(curr.termin.split(':')[0], 10) * 60 + parseInt(curr.termin.split(':')[1], 10);
+                    let prevKonec = vMinute(prev.ura) + prev.dolzina;
+                    let currStart = vMinute(curr.ura);
 
                     if (currStart < prevKonec) {
                         let zamik = prevKonec - currStart;
                         if (prviZamik === 0) prviZamik = zamik;
-
                         let noviStart = currStart + zamik;
-                        if (noviStart + curr.minute > 1440) {
-                            napakaMeje = true; break;
-                        }
-
-                        let h = Math.floor(noviStart / 60);
-                        let m = noviStart % 60;
-                        curr.termin = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+                        if (noviStart + curr.dolzina > 1440) { napakaMeje = true; break; }
+                        curr.ura = vUro(noviStart);
                     }
                 }
 
@@ -1890,125 +2016,38 @@
                     }
                 }
 
-                kopija.forEach(u => delete u.origMin);
+                kopija.forEach(k => {
+                    let pravi = najdiTermin(k.id);
+                    if (pravi) pravi.ura = k.ura;
+                });
 
-                bazaUcencev[dan] = kopija;
-                trenutniUcenec = bazaUcencev[dan].find(u => u.id === trenutniUcenec.id);
-
-                document.getElementById('podatki-termin').innerText = trenutniUcenec.termin;
                 shraniPodatke();
+                if (poKoncu) poKoncu();
             });
         }
 
-        function urediTerminIzSeznama(event, dan, indeks) {
-            event.stopPropagation();
-            let ucenec = bazaUcencev[dan][indeks];
-            let zacetnaUra = ucenec.termin;
-
-            odpriIzbirnikUre(zacetnaUra, function(formatiranTermin) {
-                let kopija = JSON.parse(JSON.stringify(bazaUcencev[dan]));
-                kopija.forEach(u => {
-                    let d = u.termin.split(':');
-                    u.origMin = parseInt(d[0], 10) * 60 + parseInt(d[1], 10);
-                });
-
-                let ucenecVKopiji = kopija.find(u => u.id === ucenec.id);
-
-                let vnosDeli = formatiranTermin.split(':');
-                let vnosStartMinut = parseInt(vnosDeli[0], 10) * 60 + parseInt(vnosDeli[1], 10);
-                if (vnosStartMinut + ucenecVKopiji.minute > 1440) {
-                    alert("Vnos ni mogoč. Prišli ste do ure 23:59.");
-                    return;
-                }
-
-                ucenecVKopiji.termin = formatiranTermin;
-
-                kopija.sort((a, b) => {
-                    let minA = parseInt(a.termin.split(':')[0], 10) * 60 + parseInt(a.termin.split(':')[1], 10);
-                    let minB = parseInt(b.termin.split(':')[0], 10) * 60 + parseInt(b.termin.split(':')[1], 10);
-                    if (minA !== minB) return minA - minB;
-                    return a.origMin - b.origMin;
-                });
-
-                let anchorIndex = kopija.findIndex(u => u.id === ucenec.id);
-                let prviZamik = 0;
-                let napakaMeje = false;
-
-                for (let i = anchorIndex - 1; i >= 0; i--) {
-                    let next = kopija[i + 1];
-                    let curr = kopija[i];
-
-                    let nextStart = parseInt(next.termin.split(':')[0], 10) * 60 + parseInt(next.termin.split(':')[1], 10);
-                    let currStart = parseInt(curr.termin.split(':')[0], 10) * 60 + parseInt(curr.termin.split(':')[1], 10);
-                    let currKonec = currStart + curr.minute;
-
-                    if (currKonec > nextStart) {
-                        let zamik = currKonec - nextStart;
-                        if (prviZamik === 0) prviZamik = zamik;
-
-                        let noviStart = currStart - zamik;
-                        if (noviStart < 0) {
-                            napakaMeje = true; break;
-                        }
-
-                        let h = Math.floor(noviStart / 60);
-                        let m = noviStart % 60;
-                        curr.termin = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
-                    }
-                }
-
-                for (let i = anchorIndex + 1; i < kopija.length; i++) {
-                    let prev = kopija[i - 1];
-                    let curr = kopija[i];
-
-                    let prevStart = parseInt(prev.termin.split(':')[0], 10) * 60 + parseInt(prev.termin.split(':')[1], 10);
-                    let prevKonec = prevStart + prev.minute;
-                    let currStart = parseInt(curr.termin.split(':')[0], 10) * 60 + parseInt(curr.termin.split(':')[1], 10);
-
-                    if (currStart < prevKonec) {
-                        let zamik = prevKonec - currStart;
-                        if (prviZamik === 0) prviZamik = zamik;
-
-                        let noviStart = currStart + zamik;
-                        if (noviStart + curr.minute > 1440) {
-                            napakaMeje = true; break;
-                        }
-
-                        let h = Math.floor(noviStart / 60);
-                        let m = noviStart % 60;
-                        curr.termin = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
-                    }
-                }
-
-                if (napakaMeje) {
-                    alert("Premik ni mogoč. Presegli ste skrajno mejo dneva (00:00 ali 23:59).");
-                    return;
-                }
-
-                if (prviZamik > 0) {
-                    if (!confirm(`Urnik se bo zaradi prekrivanja zamaknil za ${prviZamik} minut. Ali nadaljujem?`)) {
-                        return;
-                    }
-                }
-
-                kopija.forEach(u => delete u.origMin);
-
-                bazaUcencev[dan] = kopija;
-
-                shraniPodatke();
-                osveziSeznamUcencev();
+        function urediTerminIzProfila() {
+            if (!trenutniTermin) return;
+            premakniTermin(trenutniTermin.id, function() {
+                document.getElementById('podatki-termin').innerText = trenutniTermin.ura;
             });
+        }
+
+        function urediTerminIzSeznama(event, idTermina) {
+            event.stopPropagation();
+            premakniTermin(idTermina, osveziSeznamUcencev);
         }
 
         function zabeleziUro(uspeh) {
+            if (!trenutnaOseba) return;
             if (uspeh) {
-                trenutniUcenec.izvedeno++;
+                trenutnaOseba.izvedeno++;
                 alert("Ura zabeležena!");
             } else {
-                trenutniUcenec.izvedeno = Math.max(0, trenutniUcenec.izvedeno - 1);
+                trenutnaOseba.izvedeno = Math.max(0, trenutnaOseba.izvedeno - 1);
                 alert("Ura odšteta / označena kot neizvedena.");
             }
-            document.getElementById('podatki-izvedeno').innerText = trenutniUcenec.izvedeno;
+            document.getElementById('podatki-izvedeno').innerText = trenutnaOseba.izvedeno;
             shraniPodatke();
         }
 
@@ -2018,34 +2057,33 @@
         }
 
         function prilagodiMinute(sprememba) {
-            let noveMinute = Math.max(5, trenutniUcenec.minute + sprememba); 
-            
-            let deliTrenutni = trenutniUcenec.termin.split(':');
-            let zacetekTrenutniMinut = parseInt(deliTrenutni[0], 10) * 60 + parseInt(deliTrenutni[1], 10);
-            
-            if (zacetekTrenutniMinut + noveMinute > 1440) { 
+            if (!trenutniTermin) return;
+            let noveMinute = Math.max(5, trenutniTermin.dolzina + sprememba);
+
+            if (vMinute(trenutniTermin.ura) + noveMinute > 1440) {
                 alert("Opozorilo: Trajanje ure bi preseglo polnoč. Vnos ni mogoč.");
                 return;
             }
 
-            trenutniUcenec.minute = noveMinute;
-            document.getElementById('okence-izpis').innerText = trenutniUcenec.minute + " min";
-            
+            trenutniTermin.dolzina = noveMinute;
+            document.getElementById('okence-izpis').innerText = trenutniTermin.dolzina + " min";
+
             preveriInPrikaziPrekrivanje();
             shraniPodatke();
         }
 
         function generirajPodatkeRacuna() {
-            let cena = parseFloat(document.getElementById('vnos-cene-ure').value) || 20;
-            trenutniUcenec.cenaUre = cena;
-            let skupaj = trenutniUcenec.izvedeno * cena;
-            
+            if (!trenutnaOseba) return;
+            let cena = parseFloat(document.getElementById('vnos-cene-ure').value) || nastavitve.privzetaCena;
+            trenutnaOseba.cenaUre = cena;
+            let skupaj = trenutnaOseba.izvedeno * cena;
+
             let vsebina = `
                 <h3 style="text-align:center;">RAČUN / SPECIFIKACIJA</h3>
                 <hr>
-                <p><strong>Učenec:</strong> ${trenutniUcenec.ime}</p>
-                <p><strong>Dolžina ure:</strong> ${trenutniUcenec.minute} min</p>
-                <p><strong>Izvedene ure:</strong> ${trenutniUcenec.izvedeno}</p>
+                <p><strong>Učenec:</strong> ${trenutnaOseba.ime}</p>
+                <p><strong>Dolžina ure:</strong> ${trenutniTermin ? trenutniTermin.dolzina : nastavitve.privzetaDolzina} min</p>
+                <p><strong>Izvedene ure:</strong> ${trenutnaOseba.izvedeno}</p>
                 <p><strong>Cena na uro:</strong> ${cena} €</p>
                 <hr>
                 <p style="font-size: 16px; text-align:right;"><strong>SKUPAJ: ${skupaj} €</strong></p>
