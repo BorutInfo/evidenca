@@ -1,0 +1,1172 @@
+<!DOCTYPE html>
+<html lang="sl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kalkulator: Napredni Bruto in Neto</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: #f0f2f5;
+            color: #333;
+            padding: 20px;
+            margin: 0;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: #ffffff;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+            margin-bottom: 30px;
+        }
+        h2 {
+            font-size: 1.2em;
+            color: #2c3e50;
+            margin-top: 0;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 8px;
+        }
+
+        .calc-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr) 0.8fr;
+            gap: 15px;
+            align-items: start;
+        }
+
+        .col {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 8px;
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            min-width: 0;   /* brez tega bi dolga vrstica raztegnila mrežo čez okvir */
+            position: relative;   /* sidro za puščico harmonike */
+        }
+
+        /* Naslov stolpca je gumb, ki odpira in zapira harmoniko.
+           Velikost 16 px in višina 44 px sta zahtevi za zanesljiv dotik s prstom. */
+        .col-header {
+            font-weight: 600;
+            font-size: 16px;
+            color: #495057;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            text-align: left;
+            margin-bottom: 5px;
+            border-bottom: 1px dashed #ced4da;
+            padding-bottom: 5px;
+            padding-right: 24px;   /* prostor za puščico */
+            min-height: 44px;
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+            -webkit-user-select: none;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .col-header:active { color: #212529; }
+
+        /* Puščica stoji ob desnem robu STOLPCA, ne ob naslovu, zato je pri
+           zaprtem traku vedno skrajno desno - za zneskom. */
+        .col-header::after {
+            content: '▾';
+            position: absolute;
+            right: 15px;
+            top: 15px;
+            height: 44px;
+            display: flex;
+            align-items: center;
+            color: #868e96;
+            font-size: 16px;
+        }
+        .col.zaprt > .col-header::after {
+            content: '▸';
+            top: 0;
+            bottom: 0;
+            height: auto;
+        }
+
+        /* Zaprt stolpec: naslov levo, njegov skupni znesek desno, puščica skrajno desno.
+           Znesek ni prepisan drugam - viden je isti element, ki ga izračun že polni. */
+        .col.zaprt {
+            flex-direction: row;
+            align-items: center;
+            gap: 10px;
+            padding-right: 34px;
+        }
+        .col.zaprt > * { display: none; }
+        .col.zaprt > .col-header,
+        .col.zaprt > .summary-block { display: flex; }
+        .col.zaprt > .col-header {
+            flex: 1;
+            min-width: 0;
+            margin-bottom: 0;
+            padding-bottom: 0;
+            padding-right: 0;
+            border-bottom: none;
+        }
+        .col.zaprt > .summary-block {
+            flex-shrink: 0;
+            margin-top: 0;
+            padding-top: 0;
+            border-top: none;
+        }
+        .col.zaprt .sum-label,
+        .col.zaprt .share-line { display: none; }
+
+        label {
+            font-size: 0.85em;
+            color: #555;
+            margin-bottom: -5px;
+            display: block;
+        }
+
+        input[type="text"], input[type="number"] {
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 16px;   /* pod 16 px iPhone ob dotiku polja približa stran */
+            width: 100%;
+            box-sizing: border-box;
+            transition: border-color 0.2s;
+        }
+
+        input[type="text"]:focus, input[type="number"]:focus {
+            border-color: #3498db;
+            outline: none;
+        }
+
+        input[type="range"] {
+            width: 100%;
+            margin-top: 5px;
+        }
+
+        /* Številska polja poravnamo desno */
+        .num-field { text-align: right; }
+
+        /* Urejene vrstice za stroške / davke */
+        .cost-row {
+            display: flex;
+            gap: 5px;
+        }
+        .cost-row .name-field {
+            flex: 2;
+            min-width: 0;
+        }
+        .cost-row .num-field {
+            flex: 1;
+            min-width: 0;
+            padding-right: 8px; /* Zamik številke od roba */
+        }
+
+        .btn-action {
+            width: 32px;
+            height: 35px;
+            border: none;
+            border-radius: 4px;
+            font-size: 1.2em;
+            font-weight: bold;
+            color: white;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+        .btn-add { background-color: #2ecc71; }
+        .btn-add:hover { background-color: #27ae60; }
+        .btn-remove { background-color: #e74c3c; }
+        .btn-remove:hover { background-color: #c0392b; }
+
+        /* Poravnava zneskov na dnu stolpcev.
+           Pisava z enako širokimi znaki + desna poravnava poskrbita, da so pike nad
+           pikami, decimalke nad decimalkami in znaka € / % v istem stolpcu.
+           Vsi zneski se izpisujejo na 2 decimalki, zato se vrstice ujamejo same. */
+        .mini-result,
+        .share-line,
+        .result-value {
+            font-family: "Courier New", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+            font-variant-numeric: tabular-nums;
+            text-align: right;
+            white-space: nowrap;
+        }
+
+        /* Velikosti pisave so v pikslih in nad 16 px: brskalniki z vklopljeno
+           nastavitvijo "najmanjša velikost pisave" (Safari) manjše vrednosti
+           samodejno povečajo na ~16 px, zato bi bile med seboj videti enake. */
+
+        /* Napis stoji nad številkami, tako kot v polju s končnimi zneski */
+        .sum-label {
+            font-size: 16px;
+            color: #6b7280;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            text-align: right;
+            margin-bottom: 3px;
+            white-space: nowrap;   /* napis vedno v eni vrstici */
+        }
+
+        /* Blok povzetka na dnu stolpca: napis + seštevek + delež + osnova */
+        .summary-block {
+            margin-top: 5px;
+            padding-top: 5px;
+            border-top: 1px dotted #ccc;
+        }
+        .mini-result {
+            font-size: 21px;
+            color: #666;
+            font-weight: bold;
+        }
+        .share-line {
+            font-size: 21px;
+            color: #666;
+            font-weight: bold;
+            margin-top: 3px;
+        }
+
+        /* Stolpec brez okvirja (nosilec polja z zneski) */
+        .col-plain {
+            padding: 0;
+            background: none;
+            border: none;
+            min-width: 0;
+        }
+        /* Prazno mesto v 2. vrstici, kjer v 1. vrstici stoji stolpec Davki */
+        .col-empty {
+            background: none;
+            border: none;
+            padding: 0;
+        }
+        /* Druga vrstica stolpcev */
+        .row-second {
+            margin-top: 18px;
+            padding-top: 18px;
+            border-top: 1px dashed #ced4da;
+        }
+
+        .result-box {
+            text-align: right;
+            background: #eef2ff;
+            padding: 16px 10px;
+            border-radius: 8px;
+            border: 2px solid #c7d2fe;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            box-sizing: border-box;
+        }
+        .result-caption {
+            color: #4f46e5;
+            font-size: 16px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 12px;
+            padding-bottom: 6px;
+            border-bottom: 1px solid #c7d2fe;
+        }
+        .result-item { margin-bottom: 10px; }
+        .result-item:last-child { margin-bottom: 0; }
+        .result-box label {
+            color: #4f46e5;
+            font-size: 16px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 2px;
+        }
+        .result-value {
+            font-size: 21px;
+            font-weight: bold;
+            color: #3730a3;
+        }
+        .result-sum {
+            margin-top: 12px;
+            padding-top: 10px;
+            border-top: 2px solid #c7d2fe;
+        }
+        .result-sum .result-value { font-size: 28px; }   /* SKUPAJ ostane večji */
+        .result-value.result-na {
+            font-size: 16px;
+            color: #b91c1c;
+        }
+
+        @media (max-width: 900px) {
+            .calc-grid { grid-template-columns: 1fr; }
+
+            /* Polje s končnimi zneski skoči na vrh in ostane prilepljeno,
+               da so zneski med vnašanjem ves čas pred očmi. */
+            .calc-grid > .col-plain {
+                order: -1;
+                position: sticky;
+                top: 0;
+                z-index: 20;
+            }
+            .col-plain .result-box { height: auto; padding: 10px 12px; }
+            .result-caption { margin-bottom: 6px; padding-bottom: 4px; }
+            .result-item { margin-bottom: 4px; }
+            .result-sum { margin-top: 8px; padding-top: 6px; }
+
+            /* Podvojeno polje z zneski v drugi vrstici na telefonu ni potrebno */
+            .row-second > .col-plain { display: none; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h2>NETO → BRUTO</h2>
+
+        <!-- Vrstica 1: neobdavčen prihodek (davek se obračuna) -->
+        <div class="calc-grid">
+            <div class="col">
+                <div class="col-header">1. Neobdavčen prihodek</div>
+                <label>Neto</label>
+                <input type="text" inputmode="decimal" class="num-field nonneg" id="net1" value="0">
+                <div class="summary-block">
+                    <div class="sum-label">Skupaj osnova</div>
+                    <div class="mini-result" id="sum-base-1">0.00 €</div>
+                    <div class="share-line" id="share-base-1">+0.00 %</div>
+                    <div class="share-line" id="basis-base-1">Do 0.00 €</div>
+                </div>
+            </div>
+
+            <div class="col">
+                <div class="col-header">2. Davki (%)</div>
+                <div id="taxes-container-1"></div>
+                <div class="summary-block">
+                    <div class="sum-label">Skupaj davek</div>
+                    <div class="mini-result" id="sum-tax-1">0.00 %</div>
+                    <div class="share-line" id="share-tax-1">0.00 €</div>
+                    <div class="share-line" id="basis-tax-1">Od 0.00 €</div>
+                </div>
+            </div>
+
+            <div class="col">
+                <div class="col-header">3. Drugi stroški</div>
+                <div id="costs-container-1"></div>
+                <div class="summary-block">
+                    <div class="sum-label">Skupaj stroški</div>
+                    <div class="mini-result" id="sum-costs-1">0.00 €</div>
+                    <div class="share-line" id="share-costs-1">0.00 %</div>
+                    <div class="share-line" id="basis-costs-1">Od 0.00 €</div>
+                </div>
+            </div>
+
+            <div class="col">
+                <div class="col-header">4. Potni stroški</div>
+                <label>km</label>
+                <input type="text" inputmode="decimal" class="num-field nonneg" id="km1" value="0">
+                <label>Poraba (l / 100km)</label>
+                <input type="text" inputmode="decimal" class="num-field nonneg" id="poraba1" value="0">
+                <label>Cena goriva (€ / l)</label>
+                <input type="text" inputmode="decimal" class="num-field nonneg" id="gorivo1" value="0">
+                <label>Amortizacija (€ / 100km)</label>
+                <input type="text" inputmode="decimal" class="num-field nonneg" id="amort1" value="0">
+                <div class="summary-block">
+                    <div class="sum-label">Skupaj pot</div>
+                    <div class="mini-result" id="sum-travel-1">0.00 €</div>
+                    <div class="share-line" id="share-travel-1">0.00 %</div>
+                    <div class="share-line" id="basis-travel-1">Od 0.00 €</div>
+                </div>
+            </div>
+
+            <div class="col col-plain">
+                <div class="result-box">
+                    <div class="result-caption">BRUTO</div>
+                    <div class="result-item">
+                        <label>Neobdavčen</label>
+                        <div class="result-value tot-untaxed-1" id="res1">0.00 €</div>
+                    </div>
+                    <div class="result-item">
+                        <label>Obdavčen</label>
+                        <div class="result-value tot-taxed-1" id="res3">0.00 €</div>
+                    </div>
+                    <div class="result-item result-sum">
+                        <label>Skupaj</label>
+                        <div class="result-value tot-total-1" id="restot1">0.00 €</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Vrstica 2: obdavčen prihodek (davek je že plačan, zato ga ni) -->
+        <div class="calc-grid row-second">
+            <div class="col">
+                <div class="col-header">1. Obdavčen prihodek</div>
+                <label>Neto</label>
+                <input type="text" inputmode="decimal" class="num-field nonneg" id="net3" value="0">
+                <div class="summary-block">
+                    <div class="sum-label">Skupaj osnova</div>
+                    <div class="mini-result" id="sum-base-3">0.00 €</div>
+                    <div class="share-line" id="share-base-3">+0.00 %</div>
+                    <div class="share-line" id="basis-base-3">Do 0.00 €</div>
+                </div>
+            </div>
+
+            <div class="col-empty" aria-hidden="true"></div>
+
+            <div class="col">
+                <div class="col-header">3. Drugi stroški</div>
+                <div id="costs-container-3"></div>
+                <div class="summary-block">
+                    <div class="sum-label">Skupaj stroški</div>
+                    <div class="mini-result" id="sum-costs-3">0.00 €</div>
+                    <div class="share-line" id="share-costs-3">0.00 %</div>
+                    <div class="share-line" id="basis-costs-3">Od 0.00 €</div>
+                </div>
+            </div>
+
+            <div class="col">
+                <div class="col-header">4. Potni stroški</div>
+                <label>km</label>
+                <input type="text" inputmode="decimal" class="num-field nonneg" id="km3" value="0">
+                <label>Poraba (l / 100km)</label>
+                <input type="text" inputmode="decimal" class="num-field nonneg" id="poraba3" value="0">
+                <label>Cena goriva (€ / l)</label>
+                <input type="text" inputmode="decimal" class="num-field nonneg" id="gorivo3" value="0">
+                <label>Amortizacija (€ / 100km)</label>
+                <input type="text" inputmode="decimal" class="num-field nonneg" id="amort3" value="0">
+                <div class="summary-block">
+                    <div class="sum-label">Skupaj pot</div>
+                    <div class="mini-result" id="sum-travel-3">0.00 €</div>
+                    <div class="share-line" id="share-travel-3">0.00 %</div>
+                    <div class="share-line" id="basis-travel-3">Od 0.00 €</div>
+                </div>
+            </div>
+
+            <div class="col col-plain">
+                <div class="result-box">
+                    <div class="result-caption">BRUTO</div>
+                    <div class="result-item">
+                        <label>Neobdavčen</label>
+                        <div class="result-value tot-untaxed-1">0.00 €</div>
+                    </div>
+                    <div class="result-item">
+                        <label>Obdavčen</label>
+                        <div class="result-value tot-taxed-1">0.00 €</div>
+                    </div>
+                    <div class="result-item result-sum">
+                        <label>Skupaj</label>
+                        <div class="result-value tot-total-1">0.00 €</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <h2>BRUTO → NETO</h2>
+
+        <!-- Vrstica 1: neobdavčen prihodek (davek se obračuna) -->
+        <div class="calc-grid">
+            <div class="col">
+                <div class="col-header">1. Neobdavčen prihodek</div>
+                <label>Bruto</label>
+                <input type="text" inputmode="decimal" class="num-field nonneg" id="gross2" value="0">
+                <div class="summary-block">
+                    <div class="sum-label">Skupaj osnova</div>
+                    <div class="mini-result" id="sum-base-2">0.00 €</div>
+                    <div class="share-line" id="share-base-2">+0.00 %</div>
+                    <div class="share-line" id="basis-base-2">Do 0.00 €</div>
+                </div>
+            </div>
+
+            <div class="col">
+                <div class="col-header">2. Davki (%)</div>
+                <div id="taxes-container-2"></div>
+                <div class="summary-block">
+                    <div class="sum-label">Skupaj davek</div>
+                    <div class="mini-result" id="sum-tax-2">0.00 %</div>
+                    <div class="share-line" id="share-tax-2">0.00 €</div>
+                    <div class="share-line" id="basis-tax-2">Od 0.00 €</div>
+                </div>
+            </div>
+
+            <div class="col">
+                <div class="col-header">3. Drugi stroški</div>
+                <div id="costs-container-2"></div>
+                <div class="summary-block">
+                    <div class="sum-label">Skupaj stroški</div>
+                    <div class="mini-result" id="sum-costs-2">0.00 €</div>
+                    <div class="share-line" id="share-costs-2">0.00 %</div>
+                    <div class="share-line" id="basis-costs-2">Od 0.00 €</div>
+                </div>
+            </div>
+
+            <div class="col">
+                <div class="col-header">4. Potni stroški</div>
+                <label>km</label>
+                <input type="text" inputmode="decimal" class="num-field nonneg" id="km2" value="0">
+                <label>Poraba (l / 100km)</label>
+                <input type="text" inputmode="decimal" class="num-field nonneg" id="poraba2" value="0">
+                <label>Cena goriva (€ / l)</label>
+                <input type="text" inputmode="decimal" class="num-field nonneg" id="gorivo2" value="0">
+                <label>Amortizacija (€ / 100km)</label>
+                <input type="text" inputmode="decimal" class="num-field nonneg" id="amort2" value="0">
+                <div class="summary-block">
+                    <div class="sum-label">Skupaj pot</div>
+                    <div class="mini-result" id="sum-travel-2">0.00 €</div>
+                    <div class="share-line" id="share-travel-2">0.00 %</div>
+                    <div class="share-line" id="basis-travel-2">Od 0.00 €</div>
+                </div>
+            </div>
+
+            <div class="col col-plain">
+                <div class="result-box">
+                    <div class="result-caption">NETO</div>
+                    <div class="result-item">
+                        <label>Neobdavčen</label>
+                        <div class="result-value tot-untaxed-2" id="res2">0.00 €</div>
+                    </div>
+                    <div class="result-item">
+                        <label>Obdavčen</label>
+                        <div class="result-value tot-taxed-2" id="res4">0.00 €</div>
+                    </div>
+                    <div class="result-item result-sum">
+                        <label>Skupaj</label>
+                        <div class="result-value tot-total-2" id="restot2">0.00 €</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Vrstica 2: obdavčen prihodek (davek je že plačan, zato ga ni) -->
+        <div class="calc-grid row-second">
+            <div class="col">
+                <div class="col-header">1. Obdavčen prihodek</div>
+                <label>Bruto</label>
+                <input type="text" inputmode="decimal" class="num-field nonneg" id="gross4" value="0">
+                <div class="summary-block">
+                    <div class="sum-label">Skupaj osnova</div>
+                    <div class="mini-result" id="sum-base-4">0.00 €</div>
+                    <div class="share-line" id="share-base-4">+0.00 %</div>
+                    <div class="share-line" id="basis-base-4">Do 0.00 €</div>
+                </div>
+            </div>
+
+            <div class="col-empty" aria-hidden="true"></div>
+
+            <div class="col">
+                <div class="col-header">3. Drugi stroški</div>
+                <div id="costs-container-4"></div>
+                <div class="summary-block">
+                    <div class="sum-label">Skupaj stroški</div>
+                    <div class="mini-result" id="sum-costs-4">0.00 €</div>
+                    <div class="share-line" id="share-costs-4">0.00 %</div>
+                    <div class="share-line" id="basis-costs-4">Od 0.00 €</div>
+                </div>
+            </div>
+
+            <div class="col">
+                <div class="col-header">4. Potni stroški</div>
+                <label>km</label>
+                <input type="text" inputmode="decimal" class="num-field nonneg" id="km4" value="0">
+                <label>Poraba (l / 100km)</label>
+                <input type="text" inputmode="decimal" class="num-field nonneg" id="poraba4" value="0">
+                <label>Cena goriva (€ / l)</label>
+                <input type="text" inputmode="decimal" class="num-field nonneg" id="gorivo4" value="0">
+                <label>Amortizacija (€ / 100km)</label>
+                <input type="text" inputmode="decimal" class="num-field nonneg" id="amort4" value="0">
+                <div class="summary-block">
+                    <div class="sum-label">Skupaj pot</div>
+                    <div class="mini-result" id="sum-travel-4">0.00 €</div>
+                    <div class="share-line" id="share-travel-4">0.00 %</div>
+                    <div class="share-line" id="basis-travel-4">Od 0.00 €</div>
+                </div>
+            </div>
+
+            <div class="col col-plain">
+                <div class="result-box">
+                    <div class="result-caption">NETO</div>
+                    <div class="result-item">
+                        <label>Neobdavčen</label>
+                        <div class="result-value tot-untaxed-2">0.00 €</div>
+                    </div>
+                    <div class="result-item">
+                        <label>Obdavčen</label>
+                        <div class="result-value tot-taxed-2">0.00 €</div>
+                    </div>
+                    <div class="result-item result-sum">
+                        <label>Skupaj</label>
+                        <div class="result-value tot-total-2">0.00 €</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const MAX_TAX = 100;        // davek nad 100 % ni smiseln
+        const SLIDER_BASE_MAX = 30; // privzeti obseg drsnika (za natančno nastavljanje nizkih stopenj)
+        const MAX_DISPLAY = 1e15;   // nad to mejo znesek ni več smiseln (in bi razbil prikaz)
+
+        // Privzeta vsebina stolpcev: prva vrstica ima ime, nadaljnje so prazne, vsi zneski 0
+        const DEFAULT_TAXES = [{ name: 'Davek', val: 0 }, { name: '', val: 0 }];
+        const DEFAULT_COSTS = [{ name: 'Stroški', val: 0 }, { name: '', val: 0 }];
+
+        const TRAVEL_FIELDS = ['km', 'poraba', 'gorivo', 'amort'];
+
+        // Štirje izračuni: vsaka tabela ima vrstico z neobdavčenim in vrstico z obdavčenim prihodkom.
+        // Obdavčen prihodek (taxed: true) nima stolpca z davki - davek je že plačan.
+        const CALCS = [
+            { n: 1, table: 1, taxed: false, baseId: 'net1',   dir: 'toGross' },
+            { n: 3, table: 1, taxed: true,  baseId: 'net3',   dir: 'toGross' },
+            { n: 2, table: 2, taxed: false, baseId: 'gross2', dir: 'toNet' },
+            { n: 4, table: 2, taxed: true,  baseId: 'gross4', dir: 'toNet' }
+        ];
+
+        const TABLES = [
+            { n: 1, untaxed: 1, taxed: 3 },
+            { n: 2, untaxed: 2, taxed: 4 }
+        ];
+
+        // ---------- Branje števil ----------
+        // Razume slovenski zapis: vejica kot decimalno ločilo, pika/presledek kot ločilo tisočic,
+        // odvečne presledke, nedeljive presledke, apostrofe in znak €.
+        function parseNum(raw) {
+            if (raw === null || raw === undefined) return 0;
+            let s = String(raw).trim();
+            if (!s) return 0;
+            s = s.replace(/[\s   '’`€]/g, '');
+            const lastComma = s.lastIndexOf(',');
+            const lastDot = s.lastIndexOf('.');
+            if (lastComma !== -1 && lastDot !== -1) {
+                if (lastComma > lastDot) {
+                    s = s.replace(/\./g, '').replace(/,/g, '.');   // 1.234,56 -> 1234.56
+                } else {
+                    s = s.replace(/,/g, '');                        // 1,234.56 -> 1234.56
+                }
+            } else if (lastComma !== -1) {
+                const parts = s.split(',');
+                s = parts.length === 2 ? parts[0] + '.' + parts[1] : s.replace(/,/g, '');
+            } else if (lastDot !== -1) {
+                if (s.split('.').length - 1 > 1) s = s.replace(/\./g, ''); // 1.234.567 -> 1234567
+            }
+            const n = parseFloat(s);
+            return isFinite(n) ? n : 0;
+        }
+
+        function clamp(v, lo, hi) {
+            if (!isFinite(v)) return lo;
+            return v < lo ? lo : (v > hi ? hi : v);
+        }
+
+        function getVal(id) {
+            const el = document.getElementById(id);
+            return el ? parseNum(el.value) : 0;
+        }
+
+        // Nenegativna polja (osnova, kilometri, poraba, gorivo, amortizacija)
+        function getNonNeg(id) {
+            return Math.max(0, getVal(id));
+        }
+
+        function setVal(id, val) {
+            const el = document.getElementById(id);
+            if (el && val !== undefined && val !== null) el.value = val;
+        }
+
+        function escapeHtml(str) {
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
+        function isShowable(n) {
+            return isFinite(n) && Math.abs(n) <= MAX_DISPLAY;
+        }
+
+        function fmtMoney(n) {
+            return isShowable(n) ? n.toFixed(2) + ' €' : 'ni izračunljivo';
+        }
+
+        // Informativni vrstici pod seštevkom stolpca:
+        //   'pct'    -> delež zneska v končnem znesku ("16.41 %")             [stolpca 3 in 4]
+        //   'eur'    -> znesek v evrih ("64.78 €"), ker je seštevek že v %     [stolpec 2 - davki]
+        //   'change' -> sprememba od zneska stolpca DO končnega zneska,        [stolpec 1]
+        //               s predznakom: 1. tabela "+53.85 %" (koliko prišteti),
+        //                             2. tabela "-25.50 %" (koliko odšteti)
+        //               Izhodišče (100 %) je znesek stolpca, zato se vrstica pod njim glasi "Do ...".
+        // Druga vrstica: stolpec 1 "Do <končni znesek> €", stolpci 2-4 "Od <končni znesek> €".
+        function showShare(kind, calcNum, amount, finalAmount, mode, basisLabel) {
+            const shareEl = document.getElementById(`share-${kind}-${calcNum}`);
+            const basisEl = document.getElementById(`basis-${kind}-${calcNum}`);
+            if (!shareEl || !basisEl) return;
+
+            if (mode === 'eur') {
+                shareEl.innerText = isShowable(amount) ? amount.toFixed(2) + ' €' : '– €';
+            } else if (mode === 'change') {
+                // 500 € + 53.85 % = 769.23 €   /   500 € - 25.50 % = 372.50 €
+                const canChange = isShowable(amount) && isShowable(finalAmount) && amount > 0;
+                if (canChange) {
+                    const d = (finalAmount / amount - 1) * 100;
+                    shareEl.innerText = (d >= 0 ? '+' : '') + d.toFixed(2) + ' %';
+                } else {
+                    shareEl.innerText = '– %';
+                }
+            } else {
+                const canShare = isShowable(amount) && isShowable(finalAmount) && finalAmount > 0;
+                shareEl.innerText = canShare ? (amount / finalAmount * 100).toFixed(2) + ' %' : '– %';
+            }
+
+            basisEl.innerText = (basisLabel || 'Od') + ' ' + (isShowable(finalAmount) ? finalAmount.toFixed(2) + ' €' : '–');
+        }
+
+        // ---------- Gumbi vrstic ----------
+        // Zeleni "+" je vedno na ZADNJI vrstici stolpca, vse ostale imajo rdeči "-".
+        // Ker zadnje vrstice ni mogoče odstraniti, v stolpcu vedno ostane vsaj ena vrstica.
+        // Oznaka izračuna je zadnja števka v imenu vsebnika (npr. "costs-container-3" -> 3).
+        function calcNumOf(containerId) {
+            const m = String(containerId).match(/(\d+)$/);
+            return m ? parseInt(m[1], 10) : 1;
+        }
+
+        function setRowButton(btn, isLast, kind, containerId) {
+            const calcNum = calcNumOf(containerId);
+            btn.className = 'btn-action ' + (isLast ? 'btn-add' : 'btn-remove');
+            btn.innerText = isLast ? '+' : '-';
+            btn.title = isLast ? 'Dodaj vrstico' : 'Odstrani vrstico';
+            btn.onclick = isLast
+                ? function () { kind === 'tax' ? addTaxRow(containerId) : addCostRow(containerId); }
+                : function () { kind === 'tax' ? removeTaxRow(btn) : removeCostRow(btn); };
+        }
+
+        function refreshButtons(containerId, kind) {
+            const rows = document.querySelectorAll('#' + containerId + ' .cost-row');
+            rows.forEach((row, i) => {
+                const btn = row.querySelector('button');
+                if (btn) setRowButton(btn, i === rows.length - 1, kind, containerId);
+            });
+        }
+
+        // ---------- Stroški ----------
+        function makeCostRow(name, val, calcNum) {
+            const row = document.createElement('div');
+            row.className = 'cost-row';
+            row.innerHTML = `
+                <input type="text" class="name-field" value="${escapeHtml(name)}">
+                <input type="text" inputmode="decimal" class="cost-val-${calcNum} num-field nonneg" value="${escapeHtml(val)}">
+                <button class="btn-action"></button>
+            `;
+            return row;
+        }
+
+        function addCostRow(containerId) {
+            const calcNum = calcNumOf(containerId);
+            document.getElementById(containerId).appendChild(makeCostRow('', 0, calcNum));
+            refreshButtons(containerId, 'cost');
+            calculateAll();
+        }
+
+        function removeCostRow(btn) {
+            const row = btn.parentElement;
+            if (!row || !row.parentElement) return;
+            const containerId = row.parentElement.id;
+            row.remove();
+            refreshButtons(containerId, 'cost');
+            calculateAll();
+        }
+
+        function rebuildCosts(containerId, calcNum, costsArr) {
+            const container = document.getElementById(containerId);
+            container.innerHTML = '';
+            costsArr.forEach(cost => {
+                container.appendChild(makeCostRow(safeName(cost), safeVal(cost), calcNum));
+            });
+            refreshButtons(containerId, 'cost');
+        }
+
+        // ---------- Davki (vsaka vrstica ima svoj drsnik) ----------
+        // Ločeno štetje po kalkulatorju, da so oznake polj predvidljive (taxNum1_0, taxNum1_1, ...)
+        const taxUidSeq = { 1: 0, 2: 0 };
+
+        function appendTaxEntry(containerId, calcNum, name, val) {
+            const container = document.getElementById(containerId);
+            const uid = taxUidSeq[calcNum]++;
+            const numId = `taxNum${calcNum}_${uid}`;
+            const rangeId = `taxRange${calcNum}_${uid}`;
+
+            const row = document.createElement('div');
+            row.className = 'cost-row';
+            row.innerHTML = `
+                <input type="text" class="name-field" value="${escapeHtml(name)}">
+                <input type="text" inputmode="decimal" class="tax-val-${calcNum} num-field" id="${numId}" data-pair="${rangeId}" value="${escapeHtml(val)}">
+                <button class="btn-action"></button>
+            `;
+            container.appendChild(row);
+
+            const range = document.createElement('input');
+            range.type = 'range';
+            range.id = rangeId;
+            range.min = '0';
+            range.step = '0.1';
+            range.setAttribute('data-pair', numId);
+            container.appendChild(range);
+
+            syncSliderTo(document.getElementById(numId)); // nastavi obseg in vrednost drsnika
+        }
+
+        function addTaxRow(containerId) {
+            appendTaxEntry(containerId, calcNumOf(containerId), '', 0);
+            refreshButtons(containerId, 'tax');
+            calculateAll();
+        }
+
+        // Vrstica davka in njen drsnik se vedno odstranita skupaj
+        function removeTaxRow(btn) {
+            const row = btn.parentElement;
+            if (!row || !row.parentElement) return;
+            const containerId = row.parentElement.id;
+            const slider = row.nextElementSibling;
+            row.remove();
+            if (slider && slider.type === 'range') slider.remove();
+            refreshButtons(containerId, 'tax');
+            calculateAll();
+        }
+
+        function rebuildTaxes(containerId, calcNum, taxesArr) {
+            const container = document.getElementById(containerId);
+            container.innerHTML = '';
+            taxUidSeq[calcNum] = 0; // stolpec je prazen, štetje lahko začnemo znova
+            taxesArr.forEach(tax => {
+                appendTaxEntry(containerId, calcNum, safeName(tax), safeVal(tax));
+            });
+            refreshButtons(containerId, 'tax');
+        }
+
+        // Obrambna pretvorba shranjenih vnosov (podatki iz localStorage so lahko poškodovani)
+        function safeName(item) {
+            if (!item || typeof item !== 'object') return '';
+            return (item.name === null || item.name === undefined) ? '' : String(item.name);
+        }
+        function safeVal(item) {
+            if (!item || typeof item !== 'object') return 0;
+            const t = typeof item.val;
+            return (t === 'string' || t === 'number') ? item.val : 0;
+        }
+        function rowsOr(arr, fallback) {
+            return (Array.isArray(arr) && arr.length) ? arr : fallback;
+        }
+
+        // Drsnik sledi številki; obseg se po potrebi razširi nad privzetih 30 %
+        function syncSliderTo(numEl) {
+            if (!numEl || !numEl.getAttribute) return;
+            const pairId = numEl.getAttribute('data-pair');
+            if (!pairId) return;
+            const slider = document.getElementById(pairId);
+            if (!slider) return;
+            const v = clamp(parseNum(numEl.value), 0, MAX_TAX);
+            slider.max = String(Math.max(SLIDER_BASE_MAX, Math.ceil(v)));
+            slider.value = String(v);
+        }
+
+        // ---------- Shranjevanje ----------
+        function collectRows(selector, numClass) {
+            const out = [];
+            document.querySelectorAll(selector).forEach(row => {
+                const nameEl = row.querySelector('.name-field');
+                const numEl = row.querySelector('.' + numClass);
+                if (!nameEl || !numEl) return;
+                out.push({ name: nameEl.value, val: numEl.value });
+            });
+            return out;
+        }
+
+        // Shranimo natanko to, kar je uporabnik vpisal (npr. "1,60" ostane "1,60"),
+        // enako kot pri vrsticah stroškov in davkov.
+        function rawVal(id) {
+            const el = document.getElementById(id);
+            return el ? el.value : '';
+        }
+
+        function saveToStorage() {
+            const data = {};
+            CALCS.forEach(c => {
+                data[c.baseId] = rawVal(c.baseId);
+                TRAVEL_FIELDS.forEach(f => { data[f + c.n] = rawVal(f + c.n); });
+                data['costs' + c.n] = collectRows(`#costs-container-${c.n} .cost-row`, 'cost-val-' + c.n);
+                if (!c.taxed) {
+                    data['taxes' + c.n] = collectRows(`#taxes-container-${c.n} .cost-row`, 'tax-val-' + c.n);
+                }
+            });
+            try {
+                localStorage.setItem('kalkulatorCen', JSON.stringify(data));
+            } catch (e) {
+                console.error('Podatkov ni bilo mogoče shraniti', e);
+            }
+        }
+
+        function readStorage() {
+            let saved = null;
+            try {
+                saved = localStorage.getItem('kalkulatorCen');
+            } catch (e) {
+                console.error('Do shranjenih podatkov ni mogoče dostopati', e);
+                return null;
+            }
+            if (!saved) return null;
+            let data = null;
+            try {
+                data = JSON.parse(saved);
+            } catch (e) {
+                console.error('Shranjeni podatki so poškodovani, uporabljam privzete vrednosti', e);
+                return null;
+            }
+            if (!data || typeof data !== 'object' || Array.isArray(data)) return null;
+            return data;
+        }
+
+        // Zgradi vse štiri izračune: iz shranjenih podatkov, sicer iz privzetih vrednosti
+        function loadFromStorage() {
+            const data = readStorage() || {};
+
+            CALCS.forEach(c => {
+                setVal(c.baseId, data[c.baseId]);
+                TRAVEL_FIELDS.forEach(f => setVal(f + c.n, data[f + c.n]));
+
+                rebuildCosts('costs-container-' + c.n, c.n, rowsOr(data['costs' + c.n], DEFAULT_COSTS));
+
+                if (!c.taxed) {
+                    // Migracija starih podatkov (en sam taxNum) v nov seznam davkov
+                    const legacy = data['taxNum' + c.n] !== undefined
+                        ? [{ name: 'Davek', val: data['taxNum' + c.n] }]
+                        : DEFAULT_TAXES;
+                    rebuildTaxes('taxes-container-' + c.n, c.n, rowsOr(data['taxes' + c.n], legacy));
+                }
+            });
+        }
+
+        // ---------- Izračun ----------
+        // Davki se obračunavajo ZAPOREDNO (davek na davek), ne seštevajo:
+        //   Neto  = Bruto * (1-d1) * (1-d2) * ... - (stroški + pot)
+        //   Bruto = (Neto + stroški + pot) / [(1-d1) * (1-d2) * ...]
+        function taxFactor(calcNum) {
+            let factor = 1;
+            document.querySelectorAll('.tax-val-' + calcNum).forEach(el => {
+                const p = clamp(parseNum(el.value), 0, MAX_TAX);
+                factor *= (1 - p / 100);
+            });
+            return factor;
+        }
+
+        // Stroški so lahko samo 0 ali več (negativen strošek ni dovoljen)
+        function sumCosts(calcNum) {
+            let sum = 0;
+            document.querySelectorAll('.cost-val-' + calcNum).forEach(el => { sum += Math.max(0, parseNum(el.value)); });
+            return sum;
+        }
+
+        function travelCost(calcNum) {
+            const km = getNonNeg('km' + calcNum);
+            return (km / 100) * ((getNonNeg('poraba' + calcNum) * getNonNeg('gorivo' + calcNum)) + getNonNeg('amort' + calcNum));
+        }
+
+        // Zapiše znesek v vsa polja z danim razredom (polje z zneski se ponovi v obeh vrsticah)
+        function showTotal(cls, n) {
+            const ok = isShowable(n);
+            document.querySelectorAll('.' + cls).forEach(el => {
+                el.innerText = ok ? n.toFixed(2) + ' €' : 'ni izračunljivo';
+                if (el.classList) {
+                    if (ok) el.classList.remove('result-na');
+                    else el.classList.add('result-na');
+                }
+            });
+        }
+
+        function calculateAll() {
+            const results = {};
+
+            CALCS.forEach(c => {
+                const base = getNonNeg(c.baseId);
+                // Obdavčen prihodek nima stolpca z davki -> faktor ostane 1 (davek je že plačan)
+                const factor = taxFactor(c.n);
+                const costs = sumCosts(c.n);
+                const travel = travelCost(c.n);
+
+                // Napisi stojijo v HTML-ju nad številkami, zato izpišemo samo znesek
+                document.getElementById('sum-base-' + c.n).innerText = fmtMoney(base);
+                document.getElementById('sum-costs-' + c.n).innerText = fmtMoney(costs);
+                document.getElementById('sum-travel-' + c.n).innerText = fmtMoney(travel);
+                if (!c.taxed) {
+                    document.getElementById('sum-tax-' + c.n).innerText = ((1 - factor) * 100).toFixed(2) + ' %';
+                }
+
+                let final;
+                if (c.dir === 'toGross') {
+                    // Pri 100 % davku bi bil potreben bruto neskončen -> rezultat ni izračunljiv
+                    final = factor > 0 ? (base + costs + travel) / factor : NaN;
+                } else {
+                    final = (base * factor) - (costs + travel);
+                }
+                results[c.n] = final;
+
+                // Stolpec 1: koliko % je treba znesku prišteti (+) ali odšteti (-) do končnega zneska
+                showShare('base', c.n, base, final, 'change', 'Do');
+                if (!c.taxed) {
+                    const taxAmount = c.dir === 'toGross'
+                        ? (isShowable(final) ? final * (1 - factor) : NaN)
+                        : base * (1 - factor);
+                    showShare('tax', c.n, taxAmount, final, 'eur');
+                }
+                showShare('costs', c.n, costs, final, 'pct');
+                showShare('travel', c.n, travel, final, 'pct');
+            });
+
+            // Polje z zneski: neobdavčen, obdavčen in njuna vsota (enako v obeh vrsticah tabele)
+            TABLES.forEach(t => {
+                const untaxed = results[t.untaxed];
+                const taxed = results[t.taxed];
+                const total = (isShowable(untaxed) && isShowable(taxed)) ? untaxed + taxed : NaN;
+                showTotal('tot-untaxed-' + t.n, untaxed);
+                showTotal('tot-taxed-' + t.n, taxed);
+                showTotal('tot-total-' + t.n, total);
+            });
+
+            saveToStorage();
+        }
+
+        // ---------- Harmonika (zlaganje stolpcev) ----------
+        // Stolpec se zloži v en trak: levo naslov, desno njegov skupni znesek.
+        // Ključ stolpca je oznaka njegovega zneska (npr. "sum-costs-3"), zato v HTML
+        // ni treba dodajati nobenih novih oznak. Polje s končnimi zneski in prazno
+        // mesto v drugi vrstici te oznake nimata, zato harmonika nista.
+        const POGLED_KLJUC = 'kalkulatorPogled';   // ločeno od podatkov o izračunu
+        const OZEK_ZASLON = '(max-width: 900px)';
+
+        function imaRazred(el, ime) {
+            if (!el || !el.className) return false;
+            return (' ' + el.className + ' ').indexOf(' ' + ime + ' ') !== -1;
+        }
+
+        function najdiStarsa(el, razred) {
+            while (el && el.nodeType === 1) {
+                if (imaRazred(el, razred)) return el;
+                el = el.parentElement;
+            }
+            return null;
+        }
+
+        function kljucStolpca(col) {
+            const el = col.querySelector('.mini-result');
+            const id = el ? el.getAttribute('id') : null;
+            return id || null;
+        }
+
+        function nastaviStolpec(col, odprt) {
+            if (odprt) col.classList.remove('zaprt');
+            else col.classList.add('zaprt');
+        }
+
+        function jeOzekZaslon() {
+            try {
+                return !!(typeof window !== 'undefined' && window.matchMedia &&
+                          window.matchMedia(OZEK_ZASLON).matches);
+            } catch (e) {
+                return false;
+            }
+        }
+
+        function shraniPogled() {
+            const odprti = [];
+            document.querySelectorAll('.col').forEach(col => {
+                const k = kljucStolpca(col);
+                if (k && !imaRazred(col, 'zaprt')) odprti.push(k);
+            });
+            try {
+                localStorage.setItem(POGLED_KLJUC, JSON.stringify(odprti));
+            } catch (e) {
+                console.error('Stanja stolpcev ni bilo mogoče shraniti', e);
+            }
+        }
+
+        // Brez shranjenega (ali ob poškodovanem) stanju velja privzeto:
+        // na ozkem zaslonu je odprt samo stolpec z osnovo, na širokem vse.
+        function naloziPogled() {
+            let seznam = null;
+            try {
+                const raw = localStorage.getItem(POGLED_KLJUC);
+                if (raw) {
+                    const p = JSON.parse(raw);
+                    if (Array.isArray(p)) seznam = p;
+                }
+            } catch (e) {
+                seznam = null;
+            }
+
+            const ozek = jeOzekZaslon();
+            document.querySelectorAll('.col').forEach(col => {
+                const k = kljucStolpca(col);
+                if (!k) return;
+                const odprt = seznam
+                    ? seznam.indexOf(k) !== -1
+                    : (!ozek || k.indexOf('sum-base-') === 0);
+                nastaviStolpec(col, odprt);
+            });
+        }
+
+        // ---------- Dogodki ----------
+        document.addEventListener('input', function (e) {
+            const t = e.target;
+            if (t && t.getAttribute) {
+                const pairId = t.getAttribute('data-pair');
+                if (pairId) {
+                    const pairEl = document.getElementById(pairId);
+                    if (pairEl) {
+                        if (pairEl.type === 'range') syncSliderTo(t);  // številka -> drsnik
+                        else pairEl.value = t.value;                   // drsnik -> številka
+                    }
+                }
+            }
+            calculateAll();
+        });
+
+        // Ob zapustitvi polja vrednosti normaliziramo (davek 0-100 %, ostala števila >= 0),
+        // da uporabnik vidi točno tisto, s čimer kalkulator računa.
+        document.addEventListener('change', function (e) {
+            const t = e.target;
+            if (!t || !t.className) return;
+            const cls = String(t.className);
+            let changed = false;
+
+            if (cls.indexOf('tax-val-') !== -1) {
+                // Zapis pustimo pri miru (npr. "7,5" ali "4.00"); popravimo samo, če je izven 0-100 %
+                const raw = parseNum(t.value);
+                const p = clamp(raw, 0, MAX_TAX);
+                if (p !== raw) { t.value = String(p); changed = true; }
+                syncSliderTo(t);
+            } else if (cls.indexOf('nonneg') !== -1) {
+                if (parseNum(t.value) < 0) { t.value = '0'; changed = true; }
+            }
+
+            if (changed) calculateAll();
+        });
+
+        // Klik na naslov odpre ali zapre stolpec.
+        // Zaprt trak se odzove na klik po vsej širini, odprt samo na naslovu -
+        // tako klik v vnosno polje stolpca ne zapre.
+        document.addEventListener('click', function (e) {
+            const col = najdiStarsa(e.target, 'col');
+            if (!col || !kljucStolpca(col)) return;
+            const jeZaprt = imaRazred(col, 'zaprt');
+            if (!jeZaprt && !najdiStarsa(e.target, 'col-header')) return;
+            nastaviStolpec(col, jeZaprt);
+            shraniPogled();
+        });
+
+        // Ob odprtju strani: zgradi vrstice (shranjene ali privzete) in izračunaj
+        loadFromStorage();
+        naloziPogled();
+        calculateAll();
+    </script>
+</body>
+</html>
